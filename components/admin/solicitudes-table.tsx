@@ -31,13 +31,14 @@ interface SolicitudesTableProps {
   onAprobar: (
     id: string,
     adminId: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; inviteUrl?: string }>;
   onRechazar: (
     id: string,
     adminId: string,
     razon: string
   ) => Promise<{ success: boolean; error?: string }>;
   readOnly?: boolean;
+  showInviteLink?: boolean;
 }
 
 export function SolicitudesTable({
@@ -46,6 +47,7 @@ export function SolicitudesTable({
   onAprobar,
   onRechazar,
   readOnly = false,
+  showInviteLink = false,
 }: SolicitudesTableProps) {
   const [rechazarDialog, setRechazarDialog] = useState<{
     open: boolean;
@@ -63,7 +65,21 @@ export function SolicitudesTable({
     try {
       const result = await onAprobar(id, adminId);
       if (result.success) {
-        toast.success("Solicitud aprobada");
+        if (result.inviteUrl) {
+          try {
+            await navigator.clipboard.writeText(result.inviteUrl);
+            toast.success("Solicitud aprobada", {
+              description: "Link de registro copiado al portapapeles",
+            });
+          } catch {
+            toast.success("Solicitud aprobada", {
+              description: `Link de registro: ${result.inviteUrl}`,
+            });
+          }
+        } else {
+          toast.success("Solicitud aprobada");
+        }
+
         window.location.reload();
       } else {
         toast.error("Error al aprobar", {
@@ -116,6 +132,42 @@ export function SolicitudesTable({
     });
   };
 
+  const handleCopyInvite = async (id: string) => {
+    setLoading(id);
+    try {
+      const result = await onAprobar(id, adminId);
+      if (!result.success) {
+        toast.error("No se pudo generar el link", {
+          description: result.error,
+        });
+        return;
+      }
+
+      if (!result.inviteUrl) {
+        toast.error("No se pudo generar el link", {
+          description: "No se recibió el link de invitación",
+        });
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(result.inviteUrl);
+        toast.success("Link copiado al portapapeles");
+      } catch {
+        toast.success("Link generado", {
+          description: result.inviteUrl,
+        });
+      }
+
+      // Refrescar para mostrar expiración/estado actualizado (se rotó el token)
+      window.location.reload();
+    } catch {
+      toast.error("Error inesperado");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   if (solicitudes.length === 0) {
     return (
       <div className="rounded-lg border p-8 text-center text-muted-foreground">
@@ -135,6 +187,7 @@ export function SolicitudesTable({
               <TableHead>Teléfono</TableHead>
               <TableHead>Mensaje</TableHead>
               <TableHead>Fecha</TableHead>
+              {showInviteLink && <TableHead>Invitación</TableHead>}
               {readOnly && <TableHead>Razón</TableHead>}
               {!readOnly && (
                 <TableHead className="text-right">Acciones</TableHead>
@@ -153,6 +206,27 @@ export function SolicitudesTable({
                   {solicitud.mensaje || "-"}
                 </TableCell>
                 <TableCell>{formatDate(solicitud.created_at)}</TableCell>
+                {showInviteLink && (
+                  <TableCell>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-muted-foreground">
+                        {solicitud.invite_used_at
+                          ? "Usado"
+                          : solicitud.invite_expires_at
+                          ? `Expira: ${formatDate(solicitud.invite_expires_at)}`
+                          : "Sin link"}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleCopyInvite(solicitud.id)}
+                        disabled={loading === solicitud.id}
+                      >
+                        {loading === solicitud.id ? "..." : "Copiar"}
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
                 {readOnly && (
                   <TableCell>
                     {solicitud.razon_rechazo && (

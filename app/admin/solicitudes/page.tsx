@@ -60,6 +60,7 @@ export default async function SolicitudesPage() {
             adminId={user.id}
             onAprobar={aprobarSolicitud}
             onRechazar={rechazarSolicitud}
+            showInviteLink
             readOnly
           />
         </TabsContent>

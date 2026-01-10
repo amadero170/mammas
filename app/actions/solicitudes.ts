@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAnonymousClient } from "@/lib/supabase/server";
+import { createHash, randomBytes } from "crypto";
 import type {
   SolicitudMamma,
   EstadoSolicitud,
@@ -9,35 +10,27 @@ import type {
 
 export async function createSolicitud(data: CreateSolicitudData) {
   try {
-    const supabase = await createClient();
+    const supabase = await createAnonymousClient();
 
-    const { data: solicitud, error } = await supabase
-      .from("mammas_autorizadas")
-      .insert({
-        nombre: data.nombre,
-        email: data.email,
-        telefono: data.telefono || null,
-        mensaje: data.mensaje || null,
-        estado: "pending",
-      })
-      .select()
-      .single();
+    const { error } = await supabase.from("mammas_autorizadas").insert({
+      nombre: data.nombre,
+      email: data.email,
+      telefono: data.telefono || null,
+      mensaje: data.mensaje || null,
+      estado: "pending",
+    });
 
     if (error) {
       console.error("Error creating solicitud:", error);
       return { success: false, error: error.message };
     }
 
-    return { success: true, data: solicitud };
+    return { success: true };
   } catch (error) {
     console.error("Unexpected error:", error);
-    return {
-      success: false,
-      error: "Error inesperado al crear la solicitud",
-    };
+    return { success: false, error: "Error inesperado al crear la solicitud" };
   }
 }
-
 export async function getSolicitudes(estado?: EstadoSolicitud) {
   try {
     const supabase = await createClient();
@@ -73,23 +66,38 @@ export async function aprobarSolicitud(id: string, adminId: string) {
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    const token = randomBytes(32).toString("hex");
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+
+    const nowIso = new Date().toISOString();
+    const inviteExpiresAtIso = new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    const { error } = await supabase
       .from("mammas_autorizadas")
       .update({
         estado: "approved",
-        admin_id: adminId,
-        updated_at: new Date().toISOString(),
+        revisado_por: adminId,
+        revisado_at: nowIso,
+        invite_token_hash: tokenHash,
+        invite_created_at: nowIso,
+        invite_expires_at: inviteExpiresAtIso,
+        invite_used_at: null,
       })
-      .eq("id", id)
-      .select()
-      .single();
+      .eq("id", id);
 
     if (error) {
       console.error("Error approving solicitud:", error);
       return { success: false, error: error.message };
     }
 
-    return { success: true, data };
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+      "http://localhost:3000";
+    const inviteUrl = `${baseUrl}/registro?token=${token}`;
+
+    return { success: true, inviteUrl };
   } catch (error) {
     console.error("Unexpected error:", error);
     return {
@@ -107,24 +115,26 @@ export async function rechazarSolicitud(
   try {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("mammas_autorizadas")
       .update({
         estado: "rejected",
-        admin_id: adminId,
+        revisado_por: adminId,
         razon_rechazo: razon,
-        updated_at: new Date().toISOString(),
+        revisado_at: new Date().toISOString(),
+        invite_token_hash: null,
+        invite_created_at: null,
+        invite_expires_at: null,
+        invite_used_at: null,
       })
-      .eq("id", id)
-      .select()
-      .single();
+      .eq("id", id);
 
     if (error) {
       console.error("Error rejecting solicitud:", error);
       return { success: false, error: error.message };
     }
 
-    return { success: true, data };
+    return { success: true };
   } catch (error) {
     console.error("Unexpected error:", error);
     return {

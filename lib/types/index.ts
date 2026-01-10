@@ -16,9 +16,14 @@ export interface SolicitudMamma {
   mensaje: string | null;
   estado: EstadoSolicitud;
   razon_rechazo: string | null;
-  admin_id: string | null;
+  solicitado_at: string | null;
+  revisado_at: string | null;
+  revisado_por: string | null;
+  invite_token_hash?: string | null;
+  invite_expires_at?: string | null;
+  invite_created_at?: string | null;
+  invite_used_at?: string | null;
   created_at: string;
-  updated_at: string;
 }
 
 export interface Profile {

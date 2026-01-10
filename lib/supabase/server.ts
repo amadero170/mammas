@@ -33,3 +33,21 @@ export async function createClient() {
     }
   );
 }
+
+// Cliente anónimo para operaciones públicas (sin cookies de sesión)
+export async function createAnonymousClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        setAll() {
+          // No hacer nada - no guardar cookies para operaciones anónimas
+        },
+      },
+    }
+  );
+}
