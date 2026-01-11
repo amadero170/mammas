@@ -11,6 +11,10 @@ export type ProviderUpsertInput = {
   zona?: string | null;
   telefono?: string | null;
   tags?: string[] | null;
+  sitio_web?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  direccion?: string | null;
 };
 
 async function assertAdmin() {
@@ -74,6 +78,10 @@ export async function upsertProvider(
       zona: input.zona ?? null,
       telefono: input.telefono ?? null,
       tags: input.tags ?? [],
+      sitio_web: input.sitio_web ?? null,
+      facebook: input.facebook ?? null,
+      instagram: input.instagram ?? null,
+      direccion: input.direccion ?? null,
       creado_por: user!.id,
       is_active: false, // new providers start inactive for MVP
     };
@@ -90,6 +98,10 @@ export async function upsertProvider(
     zona: input.zona ?? null,
     telefono: input.telefono ?? null,
     tags: input.tags ?? [],
+    sitio_web: input.sitio_web ?? null,
+    facebook: input.facebook ?? null,
+    instagram: input.instagram ?? null,
+    direccion: input.direccion ?? null,
   };
 
   const { error } = await supabase
@@ -124,6 +136,10 @@ export type ProviderCreateInput = {
   zona?: string | null;
   telefono?: string | null;
   tags?: string[] | null;
+  sitio_web?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  direccion?: string | null;
 };
 
 export async function createProviderAsMamma(
@@ -158,6 +174,10 @@ export async function createProviderAsMamma(
     zona: input.zona ?? null,
     telefono: input.telefono ?? null,
     tags: input.tags ?? [],
+    sitio_web: input.sitio_web ?? null,
+    facebook: input.facebook ?? null,
+    instagram: input.instagram ?? null,
+    direccion: input.direccion ?? null,
     creado_por: user.id,
     is_active: false, // queda inactivo hasta que admin lo active
   };

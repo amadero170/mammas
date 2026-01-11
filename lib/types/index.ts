@@ -44,6 +44,11 @@ export interface Proveedor {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Campos adicionales para links
+  sitio_web: string | null;
+  facebook: string | null;
+  instagram: string | null;
+  direccion: string | null;
 }
 
 export interface CreateSolicitudData {

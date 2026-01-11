@@ -2,15 +2,30 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Globe, Facebook, Instagram, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 import type { Proveedor } from "@/lib/types";
 import { listProvidersPublic } from "@/app/actions/proveedores";
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
+
+/** Asegura que la URL tenga protocolo https:// */
+function ensureProtocol(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  return `https://${url}`;
+}
 
 export default function DirectorioPage() {
   const [q, setQ] = useState("");
@@ -38,7 +53,9 @@ export default function DirectorioPage() {
         tags: selectedTags.length ? selectedTags : undefined,
       });
       if (!res.success) {
-        toast.error("No se pudo cargar el directorio", { description: res.error });
+        toast.error("No se pudo cargar el directorio", {
+          description: res.error,
+        });
         return;
       }
       setProviders(res.providers);
@@ -70,8 +87,9 @@ export default function DirectorioPage() {
     <div className="container mx-auto space-y-6 px-4 py-8">
       <div>
         <h1 className="text-3xl font-bold">Directorio</h1>
-      <p className="text-muted-foreground">
-          Proveedores activos (MVP). Filtros por categoría, zona y tags (AND).
+        <p className="text-muted-foreground">
+          Proveedores activos de Mammas Bahía. Filtros por categoría, zona y
+          tags.
         </p>
       </div>
 
@@ -206,31 +224,104 @@ export default function DirectorioPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {p.descripcion ? (
-                  <p className="text-sm text-muted-foreground">{p.descripcion}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {p.descripcion}
+                  </p>
                 ) : null}
 
-                {p.tags?.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {p.tags.slice(0, 8).map((t) => (
-                      <Badge key={t} variant="outline">
-                        {t}
-                      </Badge>
-                    ))}
-                    {p.tags.length > 8 ? (
-                      <span className="text-xs text-muted-foreground">
-                        +{p.tags.length - 8}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Tags:</span>{" "}
+                  {p.tags?.length ? (
+                    <span className="inline-flex flex-wrap gap-1">
+                      {p.tags.slice(0, 8).map((t) => (
+                        <Badge key={t} variant="outline" className="text-xs">
+                          {t}
+                        </Badge>
+                      ))}
+                      {p.tags.length > 8 ? (
+                        <span className="text-xs text-muted-foreground">
+                          +{p.tags.length - 8}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground/60">—</span>
+                  )}
+                </div>
 
-                {p.telefono ? (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Teléfono:</span>{" "}
-                    {p.telefono}
-                  </div>
-                ) : null}
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Teléfono:</span>{" "}
+                  {p.telefono || (
+                    <span className="text-muted-foreground/60">—</span>
+                  )}
+                </div>
               </CardContent>
+              <CardFooter className="flex h-14 items-center justify-center gap-4 border-t">
+                {/* Sitio Web */}
+                {p.sitio_web ? (
+                  <a
+                    href={ensureProtocol(p.sitio_web)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full p-2 text-foreground transition-colors hover:bg-accent"
+                    title="Sitio web"
+                  >
+                    <Globe className="h-5 w-5" />
+                  </a>
+                ) : (
+                  <span className="cursor-not-allowed rounded-full p-2 text-muted-foreground/40">
+                    <Globe className="h-5 w-5" />
+                  </span>
+                )}
+                {/* Facebook */}
+                {p.facebook ? (
+                  <a
+                    href={ensureProtocol(p.facebook)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full p-2 text-foreground transition-colors hover:bg-accent"
+                    title="Facebook"
+                  >
+                    <Facebook className="h-5 w-5" />
+                  </a>
+                ) : (
+                  <span className="cursor-not-allowed rounded-full p-2 text-muted-foreground/40">
+                    <Facebook className="h-5 w-5" />
+                  </span>
+                )}
+                {/* Instagram */}
+                {p.instagram ? (
+                  <a
+                    href={ensureProtocol(p.instagram)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full p-2 text-foreground transition-colors hover:bg-accent"
+                    title="Instagram"
+                  >
+                    <Instagram className="h-5 w-5" />
+                  </a>
+                ) : (
+                  <span className="cursor-not-allowed rounded-full p-2 text-muted-foreground/40">
+                    <Instagram className="h-5 w-5" />
+                  </span>
+                )}
+                {/* Google Maps (direccion) */}
+                {p.direccion ? (
+                  <a
+                    href={ensureProtocol(p.direccion)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full p-2 text-foreground transition-colors hover:bg-accent"
+                    title="Google Maps"
+                  >
+                    <MapPin className="h-5 w-5" />
+                  </a>
+                ) : (
+                  <span className="cursor-not-allowed rounded-full p-2 text-muted-foreground/40">
+                    <MapPin className="h-5 w-5" />
+                  </span>
+                )}
+              </CardFooter>
             </Card>
           ))}
         </div>

@@ -18,6 +18,7 @@ import type { Proveedor } from "@/lib/types";
 import { upsertProvider, type ProviderUpsertInput } from "@/app/actions/proveedores";
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
+import { TagAutocomplete } from "@/components/ui/tag-autocomplete";
 
 type Props = {
   open: boolean;
@@ -37,6 +38,10 @@ export function ProviderFormDialog({ open, onOpenChange, provider }: Props) {
       zona: provider?.zona ?? "",
       telefono: provider?.telefono ?? "",
       tags: provider?.tags ?? [],
+      sitio_web: provider?.sitio_web ?? "",
+      facebook: provider?.facebook ?? "",
+      instagram: provider?.instagram ?? "",
+      direccion: provider?.direccion ?? "",
     }),
     [provider]
   );
@@ -63,6 +68,10 @@ export function ProviderFormDialog({ open, onOpenChange, provider }: Props) {
         zona: form.zona || null,
         telefono: form.telefono || null,
         tags: form.tags,
+        sitio_web: form.sitio_web || null,
+        facebook: form.facebook || null,
+        instagram: form.instagram || null,
+        direccion: form.direccion || null,
       };
 
       const res = await upsertProvider(payload);
@@ -161,37 +170,59 @@ export function ProviderFormDialog({ open, onOpenChange, provider }: Props) {
           </div>
 
           <div className="grid gap-2">
-            <div className="flex items-center justify-between gap-4">
-              <Label>Tags (0..N)</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setForm((f) => ({ ...f, tags: [] }))}
-              >
-                Limpiar
-              </Button>
+            <Label>Tags</Label>
+            <TagAutocomplete
+              availableTags={PROVIDER_TAGS}
+              selectedTags={form.tags}
+              onChange={(tags) => setForm((f) => ({ ...f, tags }))}
+              placeholder="Escribí para buscar tags..."
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>Sitio Web</Label>
+              <Input
+                value={form.sitio_web}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sitio_web: e.target.value }))
+                }
+                placeholder="https://ejemplo.com"
+              />
             </div>
-            <select
-              multiple
-              className="min-h-40 w-full rounded-md border bg-background px-3 py-2 text-sm"
-              value={form.tags}
-              onChange={(e) => {
-                const selected = Array.from(e.target.selectedOptions).map(
-                  (o) => o.value
-                );
-                setForm((f) => ({ ...f, tags: selected }));
-              }}
-            >
-              {PROVIDER_TAGS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">
-              Tip: mantené presionado Cmd/Ctrl para seleccionar múltiples.
-            </p>
+            <div className="grid gap-2">
+              <Label>Instagram</Label>
+              <Input
+                value={form.instagram}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, instagram: e.target.value }))
+                }
+                placeholder="https://instagram.com/..."
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>Facebook</Label>
+              <Input
+                value={form.facebook}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, facebook: e.target.value }))
+                }
+                placeholder="https://facebook.com/..."
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Link Google Maps</Label>
+              <Input
+                value={form.direccion}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, direccion: e.target.value }))
+                }
+                placeholder="https://maps.google.com/..."
+              />
+            </div>
           </div>
         </div>
 
