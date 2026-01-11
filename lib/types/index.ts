@@ -28,8 +28,20 @@ export interface SolicitudMamma {
 
 export interface Profile {
   id: string;
-  user_id: string;
-  role: "admin" | "user" | null;
+  role: "admin" | "mamma" | "user" | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Proveedor {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  categoria: string | null;
+  zona: string | null;
+  telefono: string | null;
+  tags: string[];
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

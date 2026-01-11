@@ -179,11 +179,12 @@ export function Navbar() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/dashboard/mi-cuenta" className="w-full">
-                    <User className="mr-2 h-4 w-4" />
-                    Mi Cuenta
-                  </Link>
+                <DropdownMenuItem
+                  aria-disabled
+                  className="opacity-50 pointer-events-none"
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  Mi Cuenta (próximamente)
                 </DropdownMenuItem>
                 {profile?.role !== "admin" && (
                   <>
@@ -289,14 +290,13 @@ export function Navbar() {
                       </Link>
                     </>
                   )}
-                  <Link
-                    href="/dashboard/mi-cuenta"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all hover:bg-accent/50 hover:text-primary"
+                  <div
+                    aria-disabled
+                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium opacity-50 pointer-events-none"
                   >
                     <User className="h-5 w-5" />
-                    Mi Cuenta
-                  </Link>
+                    Mi Cuenta (próximamente)
+                  </div>
                   {profile?.role !== "admin" && (
                     <>
                       <Link
