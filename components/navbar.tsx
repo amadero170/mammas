@@ -181,7 +181,7 @@ export function Navbar() {
                 )}
                 <DropdownMenuItem
                   aria-disabled
-                  className="opacity-50 pointer-events-none"
+                  className="opacity-50 pointer-events-none hidden"
                 >
                   <User className="mr-2 h-4 w-4" />
                   Mi Cuenta (próximamente)
@@ -292,7 +292,7 @@ export function Navbar() {
                   )}
                   <div
                     aria-disabled
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium opacity-50 pointer-events-none"
+                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium opacity-50 pointer-events-none hidden"
                   >
                     <User className="h-5 w-5" />
                     Mi Cuenta (próximamente)

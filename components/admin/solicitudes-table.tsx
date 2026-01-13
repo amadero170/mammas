@@ -21,7 +21,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Check, X } from "lucide-react";
+import { Check, X, Mail, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import type { SolicitudMamma } from "@/lib/types";
 
@@ -31,7 +31,13 @@ interface SolicitudesTableProps {
   onAprobar: (
     id: string,
     adminId: string
-  ) => Promise<{ success: boolean; error?: string; inviteUrl?: string }>;
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    inviteUrl?: string;
+    emailSent?: boolean;
+    warning?: string;
+  }>;
   onRechazar: (
     id: string,
     adminId: string,
@@ -65,15 +71,21 @@ export function SolicitudesTable({
     try {
       const result = await onAprobar(id, adminId);
       if (result.success) {
-        if (result.inviteUrl) {
+        if (result.emailSent) {
+          toast.success("Solicitud aprobada", {
+            description: "Se envió un email de invitación al solicitante",
+          });
+        } else if (result.inviteUrl) {
+          // Fallback: si no se pudo enviar el email, copiar el link
           try {
             await navigator.clipboard.writeText(result.inviteUrl);
-            toast.success("Solicitud aprobada", {
-              description: "Link de registro copiado al portapapeles",
+            toast.warning("Solicitud aprobada", {
+              description:
+                "No se pudo enviar el email. Link copiado al portapapeles.",
             });
           } catch {
-            toast.success("Solicitud aprobada", {
-              description: `Link de registro: ${result.inviteUrl}`,
+            toast.warning("Solicitud aprobada", {
+              description: `No se pudo enviar el email. Link: ${result.inviteUrl}`,
             });
           }
         } else {
@@ -132,31 +144,33 @@ export function SolicitudesTable({
     });
   };
 
-  const handleCopyInvite = async (id: string) => {
+  const handleResendInvite = async (id: string) => {
     setLoading(id);
     try {
       const result = await onAprobar(id, adminId);
       if (!result.success) {
-        toast.error("No se pudo generar el link", {
+        toast.error("No se pudo reenviar la invitación", {
           description: result.error,
         });
         return;
       }
 
-      if (!result.inviteUrl) {
-        toast.error("No se pudo generar el link", {
-          description: "No se recibió el link de invitación",
+      if (result.emailSent) {
+        toast.success("Email reenviado", {
+          description: "Se generó un nuevo link y se envió al solicitante",
         });
-        return;
-      }
-
-      try {
-        await navigator.clipboard.writeText(result.inviteUrl);
-        toast.success("Link copiado al portapapeles");
-      } catch {
-        toast.success("Link generado", {
-          description: result.inviteUrl,
-        });
+      } else if (result.inviteUrl) {
+        // Fallback: si no se pudo enviar el email, copiar el link
+        try {
+          await navigator.clipboard.writeText(result.inviteUrl);
+          toast.warning("No se pudo enviar el email", {
+            description: "Link copiado al portapapeles como respaldo",
+          });
+        } catch {
+          toast.warning("No se pudo enviar el email", {
+            description: `Link de respaldo: ${result.inviteUrl}`,
+          });
+        }
       }
 
       // Refrescar para mostrar expiración/estado actualizado (se rotó el token)
@@ -210,20 +224,32 @@ export function SolicitudesTable({
                   <TableCell>
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-xs text-muted-foreground">
-                        {solicitud.invite_used_at
-                          ? "Usado"
-                          : solicitud.invite_expires_at
-                          ? `Expira: ${formatDate(solicitud.invite_expires_at)}`
-                          : "Sin link"}
+                        {solicitud.invite_used_at ? (
+                          <Badge variant="secondary">Registrado</Badge>
+                        ) : solicitud.invite_expires_at ? (
+                          `Expira: ${formatDate(solicitud.invite_expires_at)}`
+                        ) : (
+                          "Sin invitación"
+                        )}
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleCopyInvite(solicitud.id)}
-                        disabled={loading === solicitud.id}
-                      >
-                        {loading === solicitud.id ? "..." : "Copiar"}
-                      </Button>
+                      {!solicitud.invite_used_at && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleResendInvite(solicitud.id)}
+                          disabled={loading === solicitud.id}
+                          title="Regenera el link y envía un nuevo email"
+                        >
+                          {loading === solicitud.id ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Mail className="h-4 w-4 mr-1" />
+                              Reenviar
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 )}

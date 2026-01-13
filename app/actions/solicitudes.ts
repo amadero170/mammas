@@ -7,6 +7,7 @@ import type {
   EstadoSolicitud,
   CreateSolicitudData,
 } from "@/lib/types";
+import { sendInviteEmail } from "@/lib/email/resend";
 
 export async function createSolicitud(data: CreateSolicitudData) {
   try {
@@ -66,6 +67,18 @@ export async function aprobarSolicitud(id: string, adminId: string) {
   try {
     const supabase = await createClient();
 
+    // Primero obtener los datos de la solicitud para tener el email y nombre
+    const { data: solicitud, error: fetchError } = await supabase
+      .from("mammas_autorizadas")
+      .select("email, nombre")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !solicitud) {
+      console.error("Error fetching solicitud:", fetchError);
+      return { success: false, error: "No se encontró la solicitud" };
+    }
+
     const token = randomBytes(32).toString("hex");
     const tokenHash = createHash("sha256").update(token).digest("hex");
 
@@ -97,7 +110,24 @@ export async function aprobarSolicitud(id: string, adminId: string) {
       "http://localhost:3000";
     const inviteUrl = `${baseUrl}/registro?token=${token}`;
 
-    return { success: true, inviteUrl };
+    // Enviar email de invitación automáticamente
+    try {
+      await sendInviteEmail({
+        to: solicitud.email,
+        nombre: solicitud.nombre,
+        inviteUrl,
+      });
+      return { success: true, emailSent: true };
+    } catch (emailError) {
+      console.error("Error sending invite email:", emailError);
+      // Fallback: retornar el inviteUrl para copiar manualmente
+      return {
+        success: true,
+        emailSent: false,
+        inviteUrl,
+        warning: "Aprobado pero no se pudo enviar el email",
+      };
+    }
   } catch (error) {
     console.error("Unexpected error:", error);
     return {
