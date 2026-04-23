@@ -92,3 +92,35 @@ export async function loginWithFacebook() {
   // });
   // return { success: !error, data, error: error?.message };
 }
+
+export async function recoverPassword(email: string) {
+  const supabase = await createClient();
+  
+  // Create callback URL dynamically based on environment
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const callbackUrl = `${siteUrl}/auth/callback?next=/actualizar-contrasena`;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: callbackUrl,
+  });
+
+  if (error) {
+    console.log("[AUTH] Recover password error:", error.message);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function updatePassword(password: string) {
+  const supabase = await createClient();
+  
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    console.log("[AUTH] Update password error:", error.message);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
