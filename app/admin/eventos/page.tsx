@@ -1,14 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { EventsTable } from "@/components/admin/events-table";
+import type { Evento } from "@/lib/types";
 
-export default async function EventosPage() {
+export default async function EventosAdminPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,8 +12,14 @@ export default async function EventosPage() {
     return null;
   }
 
-  // Por ahora, mostrar mensaje placeholder ya que la tabla de eventos aún no está implementada
-  // TODO: Implementar tabla de eventos en Supabase y reemplazar este contenido
+  const { data: events, error } = await supabase
+    .from("events")
+    .select("*")
+    .order("fecha_inicio", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching events:", error);
+  }
 
   return (
     <div className="space-y-6">
@@ -30,15 +30,17 @@ export default async function EventosPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-dashed p-12 text-center">
-        <p className="text-muted-foreground">
-          La gestión de eventos estará disponible próximamente
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground/70">
-          Esta sección se implementará en la siguiente fase del proyecto
-        </p>
-      </div>
+      {!events || events.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-12 text-center">
+          <p className="text-muted-foreground">No hay eventos todavía</p>
+          <p className="mt-2 text-sm text-muted-foreground/70">
+            Creá un nuevo evento con el botón de arriba.
+          </p>
+          <EventsTable events={[]} />
+        </div>
+      ) : (
+        <EventsTable events={events as Evento[]} />
+      )}
     </div>
   );
 }
-

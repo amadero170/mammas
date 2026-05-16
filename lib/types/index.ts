@@ -49,6 +49,9 @@ export interface Proveedor {
   facebook: string | null;
   instagram: string | null;
   direccion: string | null;
+  // Cloudinary
+  logo_url: string | null;
+  logo_public_id: string | null;
 }
 
 export interface CreateSolicitudData {
@@ -56,4 +59,31 @@ export interface CreateSolicitudData {
   email: string;
   telefono?: string;
   mensaje?: string;
+}
+
+export type EstadoEvento = "draft" | "published";
+
+export interface Evento {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  ubicacion: string;
+  direccion: string | null;
+  google_maps_link: string | null;
+  categoria: string;
+  imagen_url: string | null;
+  imagen_public_id: string | null;
+  link_externo: string | null;
+  estado: EstadoEvento;
+  creado_por: string;
+  horario_inicio: string | null;
+  horario_fin: string | null;
+  telefono: string | null;
+  precios: string | null;
+  zona: string | null;
+  tags: string[] | null;
+  created_at: string;
+  updated_at: string;
 }

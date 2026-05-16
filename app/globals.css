@@ -4,48 +4,80 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Brand palette:
+       #2e1b40  Dark Purple
+       #4c2f92  Purple
+       #9acaaa  Sage Green
+       #e5f34a  Lime Yellow
+       #efe8c2  Cream
+       #ebf4ee  Light Mint
+    */
+    --background: 139 29% 94%;       /* #ebf4ee - light mint */
+    --foreground: 271 41% 18%;       /* #2e1b40 - dark purple */
+
+    --card: 0 0% 100%;               /* white */
+    --card-foreground: 271 41% 18%;  /* #2e1b40 */
+
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --popover-foreground: 271 41% 18%;
+
+    --primary: 258 51% 38%;          /* #4c2f92 - purple */
+    --primary-foreground: 0 0% 100%; /* white */
+
+    --secondary: 51 58% 85%;         /* #efe8c2 - cream */
+    --secondary-foreground: 271 41% 18%;
+
+    --muted: 139 29% 94%;            /* #ebf4ee - light mint */
+    --muted-foreground: 258 20% 45%; /* muted purple */
+
+    --accent: 140 31% 70%;           /* #9acaaa - sage green */
+    --accent-foreground: 271 41% 18%;
+
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 140 20% 88%;           /* soft green-tinted border */
+    --input: 140 20% 88%;
+    --ring: 258 51% 38%;             /* purple focus ring */
     --radius: 0.5rem;
+
+    /* Named brand colors for direct use */
+    --brand-purple-dark: 271 41% 18%;   /* #2e1b40 */
+    --brand-purple: 258 51% 38%;        /* #4c2f92 */
+    --brand-sage: 140 31% 70%;          /* #9acaaa */
+    --brand-lime: 65 88% 62%;           /* #e5f34a */
+    --brand-cream: 51 58% 85%;          /* #efe8c2 */
+    --brand-mint: 139 29% 94%;          /* #ebf4ee */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --background: 271 41% 10%;          /* darker purple */
+    --foreground: 139 29% 94%;          /* light mint */
+
+    --card: 271 35% 14%;
+    --card-foreground: 139 29% 94%;
+
+    --popover: 271 35% 14%;
+    --popover-foreground: 139 29% 94%;
+
+    --primary: 140 31% 70%;             /* sage green as primary in dark */
+    --primary-foreground: 271 41% 10%;
+
+    --secondary: 271 30% 20%;
+    --secondary-foreground: 139 29% 94%;
+
+    --muted: 271 30% 20%;
+    --muted-foreground: 140 15% 65%;
+
+    --accent: 258 51% 50%;              /* brighter purple accent */
+    --accent-foreground: 139 29% 94%;
+
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --destructive-foreground: 139 29% 94%;
+
+    --border: 271 30% 20%;
+    --input: 271 30% 20%;
+    --ring: 140 31% 70%;
   }
 }
 
@@ -56,5 +88,39 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+  }
+}
+
+/* ── Custom fonts ── */
+@font-face {
+  font-family: "Karla";
+  src: url("/FONTS/Karla-VariableFont_wght.ttf") format("truetype");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Karla";
+  src: url("/FONTS/Karla-Italic-VariableFont_wght.ttf") format("truetype");
+  font-weight: 200 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "AllerDisplay";
+  src: url("/FONTS/AllerDisplay.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer utilities {
+  .font-karla {
+    font-family: "Karla", sans-serif;
+  }
+  .font-aller {
+    font-family: "AllerDisplay", sans-serif;
   }
 }

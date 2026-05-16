@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
+import { LoginModal } from "@/components/login-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   Menu,
   LogOut,
@@ -29,6 +30,7 @@ import {
   ShoppingBag,
   Plus,
   LayoutDashboard,
+  ChevronDown,
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -42,8 +44,31 @@ export function Navbar() {
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  /* ── Scroll listener for navbar background ── */
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    handleScroll(); // check on mount
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  /* ── Auto-open login modal from ?login=true query param ── */
+  useEffect(() => {
+    if (searchParams.get("login") === "true") {
+      setLoginModalOpen(true);
+      // Clean up the URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("login");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     setMounted(true);
@@ -112,53 +137,88 @@ export function Navbar() {
   };
 
   const navLinks = [
-    { href: "/", label: "Inicio" },
-    { href: "/directorio", label: "Directorio" },
-    { href: "/eventos", label: "Eventos" },
-    { href: "/nosotras", label: "Nosotras" },
+    { href: "/", label: "inicio" },
+    { href: "/directorio", label: "directorio" },
+    { href: "/eventos", label: "eventos" },
+    { href: "/nosotras", label: "contáctanos" },
   ];
 
+  const isLightTheme = pathname === "/directorio" || pathname === "/eventos";
+  const themeColor = isLightTheme ? "text-[#4c2f92]" : "text-[#e5f34a]";
+  const themeColorHover = isLightTheme ? "hover:text-[#4c2f92]" : "hover:text-[#e5f34a]";
+  const themeColor80 = isLightTheme ? "text-[#4c2f92]/80" : "text-[#e5f34a]/80";
+  const themeBorder = isLightTheme ? "border-[#4c2f92]/60" : "border-[#e5f34a]/60";
+  const navBg = isLightTheme
+    ? `bg-white/95 backdrop-blur-md ${scrolled ? "shadow-lg" : ""}`
+    : scrolled
+    ? "bg-[#2e1b40]/85 backdrop-blur-md shadow-lg"
+    : "bg-transparent";
+
   return (
-    <nav className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
+    <nav className={`fixed top-0 z-50 w-full transition-colors duration-300 ${navBg}`}>
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
-        {/* Logo */}
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-xl font-bold tracking-tight transition-opacity hover:opacity-80"
-        >
-          <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Mammas Bahía
+        {/* Logo — AllerDisplay "MAMÁS mamas gone wild" */}
+        <Link href="/" className="flex items-center gap-1.5 transition-opacity hover:opacity-80">
+          <span className={`font-aller text-xl leading-none tracking-wide ${themeColor} sm:text-2xl`}>
+            MA
+            <br />
+            MÁS
+          </span>
+          <span className={`hidden text-[10px] font-bold leading-tight ${themeColor} sm:block`}>
+            mamás
+            <br />
+            gone
+            <br />
+            wild
           </span>
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden items-center gap-1 md:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="relative rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-accent/50"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`rounded-full px-5 py-1.5 text-sm font-medium transition-all ${
+                  isActive
+                    ? `border ${themeBorder} ${themeColor}`
+                    : `${themeColor80} ${themeColorHover}`
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </div>
 
-        {/* Auth Section - Desktop */}
-        <div className="hidden items-center gap-3 md:flex">
+        {/* Right section: Language selector + Auth */}
+        <div className="hidden items-center gap-4 md:flex">
+          {/* Language Selector (decorative — no-op for now) */}
+          <button
+            className={`flex items-center gap-1 text-sm font-bold ${themeColor} transition-opacity hover:opacity-80`}
+            aria-label="Selector de idioma"
+          >
+            ESP
+            <ChevronDown className="h-4 w-4" />
+          </button>
+
+          {/* Auth */}
           {!mounted || loading ? (
-            <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
+            <div className="h-10 w-28 animate-pulse rounded-full bg-white/10" />
           ) : user ? (
+            /* ── Logged-in: avatar pill ── */
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg border border-border/50 bg-card px-3 py-2 shadow-sm transition-all hover:bg-accent/50 hover:shadow focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                  <Avatar className="h-8 w-8 border-2 border-background shadow-sm">
+                <button className="flex items-center gap-2.5 rounded-full bg-[#9acaaa] px-4 py-2 shadow transition-all hover:bg-[#9acaaa]/90 focus:outline-none focus:ring-2 focus:ring-[#9acaaa]/50 focus:ring-offset-2 focus:ring-offset-transparent">
+                  <Avatar className="h-7 w-7">
                     <AvatarImage src={user.user_metadata?.avatar_url} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
+                    <AvatarFallback className="bg-[#4c2f92] text-xs font-bold text-white capitalize font-aller">
                       {getInitials(user.email || "")}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden text-sm font-medium lg:block">
+                  <span className="text-sm font-semibold text-[#2e1b40] capitalize tracking-wide">
                     {user.email?.split("@")[0]}
                   </span>
                 </button>
@@ -219,23 +279,25 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button asChild className="shadow-sm">
-              <Link href="/login">Iniciar Sesión</Link>
-            </Button>
+            /* ── Logged-out: large purple pill button ── */
+            <button
+              onClick={() => setLoginModalOpen(true)}
+              className="rounded-full bg-[#4c2f92] px-8 py-2.5 text-sm font-bold text-[#e5f34a] shadow transition-all hover:bg-[#4c2f92]/90 hover:shadow-lg"
+            >
+              Iniciar sesión
+            </button>
           )}
         </div>
 
         {/* Mobile Menu Button */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild className="md:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-lg border border-border/50 shadow-sm hover:bg-accent/50"
+            <button
+              className={`flex h-10 w-10 items-center justify-center rounded-lg ${themeColor} transition-colors hover:bg-white/10`}
+              aria-label="Abrir menú"
             >
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Abrir menú</span>
-            </Button>
+              <Menu className="h-6 w-6" />
+            </button>
           </SheetTrigger>
           <SheetContent side="right" className="w-[300px] sm:w-[400px]">
             <SheetHeader className="border-b pb-4">
@@ -253,6 +315,13 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
+
+              {/* Mobile Language selector */}
+              <div className="flex items-center gap-1 rounded-lg px-4 py-3 text-base font-medium text-muted-foreground">
+                ESP
+                <ChevronDown className="h-4 w-4" />
+              </div>
+
               <Separator className="my-4" />
               {/* Mobile Auth Section */}
               {!mounted || loading ? (
@@ -260,14 +329,14 @@ export function Navbar() {
               ) : user ? (
                 <>
                   <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-card p-4 shadow-sm">
-                    <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
+                    <Avatar className="h-12 w-12 shadow-sm">
                       <AvatarImage src={user.user_metadata?.avatar_url} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
+                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold capitalize font-aller">
                         {getInitials(user.email || "")}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="text-sm font-semibold">
+                      <span className="text-sm font-semibold capitalize tracking-wide">
                         {user.email?.split("@")[0]}
                       </span>
                       <span className="text-xs text-muted-foreground">
@@ -328,16 +397,23 @@ export function Navbar() {
                   </Button>
                 </>
               ) : (
-                <Button asChild className="w-full shadow-sm">
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                    Iniciar Sesión
-                  </Link>
-                </Button>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setLoginModalOpen(true);
+                  }}
+                  className="w-full rounded-full bg-[#4c2f92] px-6 py-3 text-center text-sm font-bold text-[#e5f34a] shadow transition-all hover:bg-[#4c2f92]/90"
+                >
+                  Iniciar Sesión
+                </button>
               )}
             </div>
           </SheetContent>
         </Sheet>
       </div>
+
+      {/* Login Modal */}
+      <LoginModal open={loginModalOpen} onOpenChange={setLoginModalOpen} />
     </nav>
   );
 }

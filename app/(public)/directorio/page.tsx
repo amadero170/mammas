@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
-import { Globe, Facebook, Instagram, MapPin } from "lucide-react";
+import { Globe, Facebook, Instagram, MapPin, Star, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,109 +85,64 @@ export default function DirectorioPage() {
   };
 
   return (
-    <div className="container mx-auto space-y-6 px-4 py-8">
-      <div>
-        <h1 className="text-3xl font-bold">Directorio</h1>
-        <p className="text-muted-foreground">
-          Proveedores activos de Mammas Bahía. Filtros por categoría, zona y
-          tags.
+    <div className="flex min-h-screen flex-col bg-[#fdfdfd]">
+      {/* Header Banner */}
+      <div className="container mx-auto px-4 py-12 text-center md:py-20">
+        <h1 className="font-aller text-4xl leading-[1.1] tracking-wider text-[#2e1b40] uppercase md:text-6xl">
+          Sabiduría Local<br />Colectiva·Bahía
+        </h1>
+        <p className="mt-6 text-lg text-[#2e1b40]/80 md:text-xl">
+          Las mamás todo lo encuentran
         </p>
       </div>
 
-      <div className="grid gap-3 rounded-lg border bg-background p-4">
-        <div className="grid gap-3 sm:grid-cols-4">
-          <div className="sm:col-span-2">
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por nombre o descripción..."
-            />
-          </div>
-          <div>
-            <select
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-            >
-              <option value="">Todas las categorías</option>
-              {PROVIDER_CATEGORIAS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <select
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-              value={zona}
-              onChange={(e) => setZona(e.target.value)}
-            >
-              <option value="">Todas las zonas</option>
-              {PROVIDER_ZONAS.map((z) => (
-                <option key={z} value={z}>
-                  {z}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+      {/* Filters Section */}
+      <div className="container mx-auto px-4 pb-8">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-center gap-4 md:flex-row">
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Descripción"
+            className="h-12 w-full rounded-full border border-[#4c2f92] px-6 text-[#2e1b40] placeholder:text-gray-400 focus-visible:ring-[#4c2f92] md:w-auto md:flex-1"
+          />
+          <select
+            className="h-12 w-full cursor-pointer appearance-none rounded-full border border-[#4c2f92] bg-white px-6 text-[#2e1b40] focus:outline-none focus:ring-2 focus:ring-[#4c2f92] md:w-48"
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
+          >
+            <option value="">Categorías ⌄</option>
+            {PROVIDER_CATEGORIAS.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select
+            className="h-12 w-full cursor-pointer appearance-none rounded-full border border-[#4c2f92] bg-white px-6 text-[#2e1b40] focus:outline-none focus:ring-2 focus:ring-[#4c2f92] md:w-48"
+            value={zona}
+            onChange={(e) => setZona(e.target.value)}
+          >
+            <option value="">Zona ⌄</option>
+            {PROVIDER_ZONAS.map((z) => (
+              <option key={z} value={z}>
+                {z}
+              </option>
+            ))}
+          </select>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="sm:col-span-1">
+          <div className="relative w-full md:w-64">
             <Input
               value={tagSearch}
               onChange={(e) => setTagSearch(e.target.value)}
-              placeholder="Buscar tag…"
+              placeholder="Buscar tag..."
+              className="h-12 w-full rounded-full border border-[#4c2f92] px-6 pr-12 text-[#2e1b40] placeholder:text-gray-400 focus-visible:ring-[#4c2f92]"
             />
+            <div className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[#9acaaa] text-xs font-bold text-white cursor-pointer hover:bg-[#86b595] transition-colors">
+              ?
+            </div>
           </div>
-          <div className="sm:col-span-2 flex flex-wrap gap-2">
-            {selectedTags.length ? (
-              selectedTags.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => toggleTag(t)}
-                  className="rounded-full"
-                  title="Quitar tag"
-                >
-                  <Badge variant="secondary">{t}</Badge>
-                </button>
-              ))
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                Sin tags seleccionados
-              </span>
-            )}
-          </div>
-        </div>
 
-        <div className="max-h-48 overflow-auto rounded-md border bg-background p-3">
-          <div className="flex flex-wrap gap-2">
-            {filteredTagOptions.slice(0, 120).map((t) => {
-              const active = selectedTags.includes(t);
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => toggleTag(t)}
-                  className="rounded-full"
-                >
-                  <Badge variant={active ? "default" : "outline"}>{t}</Badge>
-                </button>
-              );
-            })}
-          </div>
-          {filteredTagOptions.length > 120 ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Mostrando 120 tags (filtrá con el buscador de tags).
-            </p>
-          ) : null}
-        </div>
-
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
+          <button
             onClick={() => {
               setQ("");
               setCategoria("");
@@ -194,138 +150,220 @@ export default function DirectorioPage() {
               setTagSearch("");
               setSelectedTags([]);
             }}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#4c2f92] text-white transition-colors hover:bg-[#3d2575]"
           >
-            Limpiar filtros
+            <RefreshCw className="h-5 w-5" />
+          </button>
+        </div>
+
+        {selectedTags.length > 0 && (
+          <div className="mx-auto mt-4 flex max-w-5xl flex-wrap gap-2 justify-center">
+            {selectedTags.map((t) => (
+              <button
+                key={t}
+                onClick={() => toggleTag(t)}
+                className="rounded-full border border-[#2e1b40] bg-[#2e1b40] px-3 py-1 text-xs text-white hover:bg-opacity-80"
+              >
+                {t} ✕
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Selected Tags list below search if search active */}
+        {tagSearch.trim() && (
+          <div className="mx-auto mt-2 max-w-5xl flex flex-wrap gap-2 justify-center">
+             {filteredTagOptions.slice(0, 20).map((t) => {
+                const active = selectedTags.includes(t);
+                return (
+                  <button
+                    key={t}
+                    onClick={() => toggleTag(t)}
+                    className={`rounded-full border border-[#2e1b40] px-3 py-1 text-xs transition-colors ${active ? "bg-[#2e1b40] text-white" : "bg-white text-[#2e1b40] hover:bg-gray-100"}`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+          </div>
+        )}
+
+        <div className="mx-auto mt-6 flex max-w-5xl justify-end">
+          <Button
+            variant="outline"
+            className="rounded-full border border-[#4c2f92] px-6 font-bold text-[#4c2f92] hover:bg-[#4c2f92]/5"
+          >
+            agregar +
           </Button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
-      ) : providers.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-muted-foreground">No hay resultados</p>
-          <p className="mt-2 text-sm text-muted-foreground/70">
-            Probá con otros filtros o limpiá la búsqueda.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {providers.map((p) => (
-            <Card key={p.id} className="overflow-hidden">
-              <CardHeader>
-                <CardTitle className="text-lg">{p.nombre}</CardTitle>
-                <div className="flex flex-wrap gap-2">
-                  {p.categoria ? <Badge>{p.categoria}</Badge> : null}
-                  {p.zona ? <Badge variant="secondary">{p.zona}</Badge> : null}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {p.descripcion ? (
-                  <p className="text-sm text-muted-foreground">
-                    {p.descripcion}
-                  </p>
-                ) : null}
-
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Tags:</span>{" "}
-                  {p.tags?.length ? (
-                    <span className="inline-flex flex-wrap gap-1">
-                      {p.tags.slice(0, 8).map((t) => (
-                        <Badge key={t} variant="outline" className="text-xs">
-                          {t}
-                        </Badge>
+      {/* Cards Grid */}
+      <div className="container mx-auto px-4 pb-20">
+        {loading ? (
+          <div className="py-20 text-center text-[#2e1b40]/60">
+            Cargando proveedores...
+          </div>
+        ) : providers.length === 0 ? (
+          <div className="py-20 text-center text-[#2e1b40]/60">
+            No se encontraron resultados.
+          </div>
+        ) : (
+          <div className="mx-auto grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {providers.map((p) => (
+              <div
+                key={p.id}
+                className="relative flex flex-col rounded-none border border-gray-300 bg-white p-6 shadow-sm"
+              >
+                {/* Header */}
+                <div className="flex items-start gap-4">
+                  <div className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 overflow-hidden relative">
+                    {p.logo_url ? (
+                      <Image 
+                        src={p.logo_url} 
+                        alt={p.nombre} 
+                        fill
+                        className="object-cover"
+                        sizes="72px"
+                      />
+                    ) : (
+                      <span className="font-aller text-2xl font-bold text-[#4c2f92]">
+                        {p.nombre.charAt(0)}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-aller text-xl font-bold leading-tight text-[#4c2f92]">
+                      {p.nombre}
+                    </h3>
+                    <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground">
+                      {p.categoria || "Categoría"} / {p.zona || "Zona"}
+                    </p>
+                    <div className="mt-2 flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Star
+                          key={i}
+                          className="h-4 w-4 fill-gray-400 text-gray-400"
+                        />
                       ))}
-                      {p.tags.length > 8 ? (
-                        <span className="text-xs text-muted-foreground">
-                          +{p.tags.length - 8}
-                        </span>
-                      ) : null}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground/60">—</span>
-                  )}
+                      <span className="ml-2 text-xs font-bold text-gray-600">
+                        0
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Teléfono:</span>{" "}
-                  {p.telefono || (
-                    <span className="text-muted-foreground/60">—</span>
+                {/* Body */}
+                <div className="mt-6 flex-1 space-y-4">
+                  {p.descripcion && (
+                    <p className="text-sm leading-relaxed text-[#2e1b40]/80">
+                      {p.descripcion}
+                    </p>
                   )}
+
+                  <div className="space-y-2">
+                    <div className="text-xs">
+                      <span className="font-semibold text-[#2e1b40]">
+                        Teléfono:
+                      </span>{" "}
+                      <span className="text-[#2e1b40]/80">
+                        {p.telefono || "—"}
+                      </span>
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-semibold text-[#2e1b40]">
+                        Dirección:
+                      </span>{" "}
+                      <span className="text-[#2e1b40]/80">
+                        {p.direccion || "—"}
+                      </span>
+                    </div>
+                    
+                    {/* Tags & Badge */}
+                    <div className="relative mt-4 flex pt-1">
+                      <span className="mr-2 text-xs font-semibold text-[#2e1b40] pt-0.5">
+                        Tags:
+                      </span>
+                      <div className="flex flex-wrap gap-1 pr-16">
+                        {p.tags?.slice(0, 6).map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-full border border-[#2e1b40] px-2.5 py-0.5 text-[10px] text-[#2e1b40]"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="absolute -right-2 -top-4">
+                        <Image
+                          src="/iconos/Badge_negocio_de_mama.png"
+                          alt="Mama Owned Business"
+                          width={46}
+                          height={46}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-              <CardFooter className="flex h-14 items-center justify-center gap-4 border-t">
-                {/* Sitio Web */}
-                {p.sitio_web ? (
-                  <a
-                    href={ensureProtocol(p.sitio_web)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full p-2 text-foreground transition-colors hover:bg-accent"
-                    title="Sitio web"
-                  >
-                    <Globe className="h-5 w-5" />
-                  </a>
-                ) : (
-                  <span className="cursor-not-allowed rounded-full p-2 text-muted-foreground/40">
-                    <Globe className="h-5 w-5" />
-                  </span>
-                )}
-                {/* Facebook */}
-                {p.facebook ? (
-                  <a
-                    href={ensureProtocol(p.facebook)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full p-2 text-foreground transition-colors hover:bg-accent"
-                    title="Facebook"
-                  >
-                    <Facebook className="h-5 w-5" />
-                  </a>
-                ) : (
-                  <span className="cursor-not-allowed rounded-full p-2 text-muted-foreground/40">
-                    <Facebook className="h-5 w-5" />
-                  </span>
-                )}
-                {/* Instagram */}
-                {p.instagram ? (
-                  <a
-                    href={ensureProtocol(p.instagram)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full p-2 text-foreground transition-colors hover:bg-accent"
-                    title="Instagram"
-                  >
-                    <Instagram className="h-5 w-5" />
-                  </a>
-                ) : (
-                  <span className="cursor-not-allowed rounded-full p-2 text-muted-foreground/40">
-                    <Instagram className="h-5 w-5" />
-                  </span>
-                )}
-                {/* Google Maps (direccion) */}
-                {p.direccion ? (
-                  <a
-                    href={ensureProtocol(p.direccion)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full p-2 text-foreground transition-colors hover:bg-accent"
-                    title="Google Maps"
-                  >
-                    <MapPin className="h-5 w-5" />
-                  </a>
-                ) : (
-                  <span className="cursor-not-allowed rounded-full p-2 text-muted-foreground/40">
-                    <MapPin className="h-5 w-5" />
-                  </span>
-                )}
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      )}
+
+                {/* Footer Divider line */}
+                <div className="my-5 h-px bg-[#4c2f92]/20" />
+
+                {/* Footer Icons & CTA */}
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-3">
+                    <a
+                      href={ensureProtocol(p.sitio_web || "")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
+                        !p.sitio_web && "cursor-not-allowed opacity-30"
+                      }`}
+                    >
+                      <Globe className="h-4 w-4" />
+                    </a>
+                    <a
+                      href={ensureProtocol(p.facebook || "")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
+                        !p.facebook && "cursor-not-allowed opacity-30"
+                      }`}
+                    >
+                      <Facebook className="h-4 w-4" />
+                    </a>
+                    <a
+                      href={ensureProtocol(p.instagram || "")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
+                        !p.instagram && "cursor-not-allowed opacity-30"
+                      }`}
+                    >
+                      <Instagram className="h-4 w-4" />
+                    </a>
+                    <a
+                      href={ensureProtocol(p.direccion || "")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
+                        !p.direccion && "cursor-not-allowed opacity-30"
+                      }`}
+                    >
+                      <MapPin className="h-4 w-4" />
+                    </a>
+                  </div>
+                  <Button className="rounded-full bg-[#4c2f92] px-6 py-4 font-bold text-white hover:bg-[#3d2575]">
+                    Calificar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+
     </div>
   );
 }

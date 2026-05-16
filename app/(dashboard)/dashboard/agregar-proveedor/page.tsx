@@ -13,6 +13,7 @@ import { createProviderAsMamma } from "@/app/actions/proveedores";
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
 import { TagAutocomplete } from "@/components/ui/tag-autocomplete";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 export default function AgregarProveedorPage() {
   const router = useRouter();
@@ -28,6 +29,8 @@ export default function AgregarProveedorPage() {
     facebook: "",
     instagram: "",
     direccion: "",
+    logo_url: "",
+    logo_public_id: "",
   });
 
   const onSubmit = async () => {
@@ -49,6 +52,8 @@ export default function AgregarProveedorPage() {
         facebook: form.facebook || null,
         instagram: form.instagram || null,
         direccion: form.direccion || null,
+        logo_url: form.logo_url || null,
+        logo_public_id: form.logo_public_id || null,
       });
 
       if (!res.success) {
@@ -78,7 +83,18 @@ export default function AgregarProveedorPage() {
       </div>
 
       <div className="rounded-lg border bg-background p-6">
-        <div className="grid gap-4">
+        <div className="grid gap-6">
+          <div className="grid gap-2">
+            <Label>Logo / Imagen de Perfil</Label>
+            <ImageUpload
+              value={form.logo_url}
+              onChange={(url, publicId) =>
+                setForm((f) => ({ ...f, logo_url: url, logo_public_id: publicId || "" }))
+              }
+              onRemove={() => setForm((f) => ({ ...f, logo_url: "", logo_public_id: "" }))}
+            />
+          </div>
+
           <div className="grid gap-2">
             <Label>Nombre</Label>
             <Input

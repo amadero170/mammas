@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/navbar";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: "Mammas Bahía - Directorio de Proveedores",
-  description: "Plataforma de directorio de proveedores para Mammas Bahía",
+  title: "Mammas Bahía — Sabiduría Local Colectiva",
+  description:
+    "Red de mamás en Bahía de Banderas. Recomendaciones reales de servicios, productos y experiencias locales.",
 };
 
 export default function RootLayout({
@@ -18,9 +16,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className="font-karla antialiased" suppressHydrationWarning>
         <Navbar />
-        <main className="pt-16">{children}</main>
+        {children}
         <Toaster />
       </body>
     </html>

@@ -15,6 +15,8 @@ export type ProviderUpsertInput = {
   facebook?: string | null;
   instagram?: string | null;
   direccion?: string | null;
+  logo_url?: string | null;
+  logo_public_id?: string | null;
 };
 
 async function assertAdmin() {
@@ -82,6 +84,8 @@ export async function upsertProvider(
       facebook: input.facebook ?? null,
       instagram: input.instagram ?? null,
       direccion: input.direccion ?? null,
+      logo_url: input.logo_url ?? null,
+      logo_public_id: input.logo_public_id ?? null,
       creado_por: user!.id,
       is_active: false, // new providers start inactive for MVP
     };
@@ -102,6 +106,8 @@ export async function upsertProvider(
     facebook: input.facebook ?? null,
     instagram: input.instagram ?? null,
     direccion: input.direccion ?? null,
+    logo_url: input.logo_url ?? null,
+    logo_public_id: input.logo_public_id ?? null,
   };
 
   const { error } = await supabase
@@ -140,6 +146,8 @@ export type ProviderCreateInput = {
   facebook?: string | null;
   instagram?: string | null;
   direccion?: string | null;
+  logo_url?: string | null;
+  logo_public_id?: string | null;
 };
 
 export async function createProviderAsMamma(
@@ -178,6 +186,8 @@ export async function createProviderAsMamma(
     facebook: input.facebook ?? null,
     instagram: input.instagram ?? null,
     direccion: input.direccion ?? null,
+    logo_url: input.logo_url ?? null,
+    logo_public_id: input.logo_public_id ?? null,
     creado_por: user.id,
     is_active: false, // queda inactivo hasta que admin lo active
   };
