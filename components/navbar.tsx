@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -38,6 +38,20 @@ interface Profile {
   role: "admin" | "user" | null;
 }
 
+function LoginQueryListener({ setLoginModalOpen }: { setLoginModalOpen: (v: boolean) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("login") === "true") {
+      setLoginModalOpen(true);
+      // Clean up the URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("login");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [searchParams, setLoginModalOpen]);
+  return null;
+}
+
 export function Navbar() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -48,7 +62,6 @@ export function Navbar() {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const supabase = createClient();
 
   /* ── Scroll listener for navbar background ── */
@@ -58,17 +71,6 @@ export function Navbar() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  /* ── Auto-open login modal from ?login=true query param ── */
-  useEffect(() => {
-    if (searchParams.get("login") === "true") {
-      setLoginModalOpen(true);
-      // Clean up the URL
-      const url = new URL(window.location.href);
-      url.searchParams.delete("login");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     setMounted(true);
@@ -155,7 +157,11 @@ export function Navbar() {
     : "bg-transparent";
 
   return (
-    <nav className={`fixed top-0 z-50 w-full transition-colors duration-300 ${navBg}`}>
+    <>
+      <Suspense fallback={null}>
+        <LoginQueryListener setLoginModalOpen={setLoginModalOpen} />
+      </Suspense>
+      <nav className={`fixed top-0 z-50 w-full transition-colors duration-300 ${navBg}`}>
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
         {/* Logo — AllerDisplay "MAMÁS mamas gone wild" */}
         <Link href="/" className="flex items-center gap-1.5 transition-opacity hover:opacity-80">
@@ -414,6 +420,7 @@ export function Navbar() {
 
       {/* Login Modal */}
       <LoginModal open={loginModalOpen} onOpenChange={setLoginModalOpen} />
-    </nav>
+      </nav>
+    </>
   );
 }
