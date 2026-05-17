@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -37,7 +37,7 @@ function ensureProtocol(url: string): string {
   return `https://${url}`;
 }
 
-export default function DirectorioPage() {
+function DirectorioContent() {
   const searchParams = useSearchParams();
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [categoria, setCategoria] = useState<string>(searchParams.get("categoria") ?? "");
@@ -425,5 +425,13 @@ export default function DirectorioPage() {
 
 
     </div>
+  );
+}
+
+export default function DirectorioPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-muted-foreground">Cargando directorio...</div>}>
+      <DirectorioContent />
+    </Suspense>
   );
 }
