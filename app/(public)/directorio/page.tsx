@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Globe, Facebook, Instagram, MapPin, Star, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -19,6 +27,7 @@ import type { Proveedor } from "@/lib/types";
 import { listProvidersPublic } from "@/app/actions/proveedores";
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
+import { createClient } from "@/lib/supabase/client";
 
 /** Asegura que la URL tenga protocolo https:// */
 function ensureProtocol(url: string): string {
@@ -29,14 +38,21 @@ function ensureProtocol(url: string): string {
 }
 
 export default function DirectorioPage() {
-  const [q, setQ] = useState("");
-  const [categoria, setCategoria] = useState<string>("");
+  const searchParams = useSearchParams();
+  const [q, setQ] = useState(searchParams.get("q") ?? "");
+  const [categoria, setCategoria] = useState<string>(searchParams.get("categoria") ?? "");
   const [zona, setZona] = useState<string>("");
   const [tagSearch, setTagSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagsModalOpen, setTagsModalOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [providers, setProviders] = useState<Proveedor[]>([]);
+  const [user, setUser] = useState<{ id: string } | null>(null);
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => setUser(data.user));
+  }, []);
 
   const filteredTagOptions = useMemo(() => {
     const s = tagSearch.trim().toLowerCase();
@@ -137,7 +153,10 @@ export default function DirectorioPage() {
               placeholder="Buscar tag..."
               className="h-12 w-full rounded-full border border-[#4c2f92] px-6 pr-12 text-[#2e1b40] placeholder:text-gray-400 focus-visible:ring-[#4c2f92]"
             />
-            <div className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[#9acaaa] text-xs font-bold text-white cursor-pointer hover:bg-[#86b595] transition-colors">
+            <div
+              onClick={() => setTagsModalOpen(true)}
+              className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[#9acaaa] text-xs font-bold text-white cursor-pointer hover:bg-[#86b595] transition-colors"
+            >
               ?
             </div>
           </div>
@@ -188,14 +207,51 @@ export default function DirectorioPage() {
           </div>
         )}
 
-        <div className="mx-auto mt-6 flex max-w-5xl justify-end">
-          <Button
-            variant="outline"
-            className="rounded-full border border-[#4c2f92] px-6 font-bold text-[#4c2f92] hover:bg-[#4c2f92]/5"
-          >
-            agregar +
-          </Button>
-        </div>
+        {/* Tags browser modal */}
+        <Dialog open={tagsModalOpen} onOpenChange={setTagsModalOpen}>
+          <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Tags disponibles</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground mb-4">
+              Seleccioná los tags para filtrar proveedores.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[...PROVIDER_TAGS].sort((a, b) => a.localeCompare(b)).map((t) => {
+                const active = selectedTags.includes(t);
+                return (
+                  <button
+                    key={t}
+                    onClick={() => toggleTag(t)}
+                    className={`rounded-full border border-[#2e1b40] px-3 py-1.5 text-xs transition-colors ${
+                      active
+                        ? "bg-[#2e1b40] text-white"
+                        : "bg-white text-[#2e1b40] hover:bg-gray-100"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button onClick={() => setTagsModalOpen(false)}>Listo</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {user && (
+          <div className="mx-auto mt-6 flex max-w-5xl justify-end">
+            <Link href="/dashboard/agregar-proveedor">
+              <Button
+                variant="outline"
+                className="rounded-full border border-[#4c2f92] px-6 font-bold text-[#4c2f92] hover:bg-[#4c2f92]/5"
+              >
+                agregar +
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Cards Grid */}
@@ -253,6 +309,8 @@ export default function DirectorioPage() {
                   </div>
                 </div>
 
+
+
                 {/* Body */}
                 <div className="mt-6 flex-1 space-y-4">
                   {p.descripcion && (
@@ -294,14 +352,16 @@ export default function DirectorioPage() {
                           </span>
                         ))}
                       </div>
-                      <div className="absolute -right-2 -top-4">
-                        <Image
-                          src="/iconos/Badge_negocio_de_mama.png"
-                          alt="Mama Owned Business"
-                          width={46}
-                          height={46}
-                        />
-                      </div>
+                      {p.mama_owned && (
+                        <div className="absolute -right-2 -top-4">
+                          <Image
+                            src="/iconos/Badge_negocio_de_mama.png"
+                            alt="Mama Owned Business"
+                            width={46}
+                            height={46}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

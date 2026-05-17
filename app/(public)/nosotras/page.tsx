@@ -5,15 +5,16 @@ export default function NosotrasPage() {
   return (
     <main className="-mt-16">
       {/* ═══════════════════════ HERO ═══════════════════════ */}
-      <section className="relative flex min-h-screen items-center overflow-hidden">
+      <section className="relative flex min-h-screen items-center overflow-hidden bg-[#2e1b40]">
         {/* Background image */}
         <Image
-          src="/Imágenes/contacto_image.jpg"
+          src="https://res.cloudinary.com/amadero170/image/upload/f_auto,q_auto/v1778972173/mammas-assets/mammas_contacto_image.jpg"
           alt="Mamás de la comunidad reunidas"
           fill
           priority
+          quality={60}
           className="object-cover"
-          sizes="100vw"
+          sizes="(max-width: 1400px) 100vw, 1400px"
         />
 
         {/* Content — left-aligned */}

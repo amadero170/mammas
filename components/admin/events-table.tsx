@@ -40,11 +40,11 @@ export function EventsTable({ events }: Props) {
 
   const stats = useMemo(() => {
     const total = events.length;
-    const published = events.filter((e) => e.estado === "published").length;
+    const published = events.filter((e) => e.estado === "publicado").length;
     return { total, published };
   }, [events]);
 
-  const onToggle = async (id: string, next: "draft" | "published") => {
+  const onToggle = async (id: string, next: "draft" | "publicado") => {
     setLoadingId(id);
     try {
       const res = await toggleEventEstado(id, next);
@@ -53,7 +53,7 @@ export function EventsTable({ events }: Props) {
         return;
       }
       toast.success(
-        next === "published" ? "Evento publicado" : "Evento despublicado"
+        next === "publicado" ? "Evento publicado" : "Evento despublicado"
       );
       window.location.reload();
     } catch {
@@ -80,7 +80,7 @@ export function EventsTable({ events }: Props) {
             <TableRow>
               <TableHead>Título</TableHead>
               <TableHead>Fecha</TableHead>
-              <TableHead>Categoría</TableHead>
+
               <TableHead>Zona</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -91,10 +91,10 @@ export function EventsTable({ events }: Props) {
               <TableRow key={e.id}>
                 <TableCell className="font-medium">{e.titulo}</TableCell>
                 <TableCell>{formatDate(e.fecha_inicio)}</TableCell>
-                <TableCell>{e.categoria || "-"}</TableCell>
+
                 <TableCell>{e.zona || "-"}</TableCell>
                 <TableCell>
-                  {e.estado === "published" ? (
+                  {e.estado === "publicado" ? (
                     <Badge variant="default">Publicado</Badge>
                   ) : (
                     <Badge variant="outline">Borrador</Badge>
@@ -109,7 +109,7 @@ export function EventsTable({ events }: Props) {
                     >
                       Editar
                     </Button>
-                    {e.estado === "published" ? (
+                    {e.estado === "publicado" ? (
                       <Button
                         variant="secondary"
                         size="sm"
@@ -122,7 +122,7 @@ export function EventsTable({ events }: Props) {
                       <Button
                         size="sm"
                         disabled={loadingId === e.id}
-                        onClick={() => onToggle(e.id, "published")}
+                        onClick={() => onToggle(e.id, "publicado")}
                       >
                         Publicar
                       </Button>

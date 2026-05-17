@@ -31,6 +31,8 @@ import {
   Plus,
   LayoutDashboard,
   ChevronDown,
+  Calendar,
+  CalendarPlus,
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -145,7 +147,11 @@ export function Navbar() {
     { href: "/nosotras", label: "contáctanos" },
   ];
 
-  const isLightTheme = pathname === "/directorio" || pathname === "/eventos";
+  const isLightTheme =
+    pathname === "/directorio" ||
+    pathname === "/eventos" ||
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/admin");
   const themeColor = isLightTheme ? "text-[#4c2f92]" : "text-[#e5f34a]";
   const themeColorHover = isLightTheme ? "hover:text-[#4c2f92]" : "hover:text-[#e5f34a]";
   const themeColor80 = isLightTheme ? "text-[#4c2f92]/80" : "text-[#e5f34a]/80";
@@ -270,6 +276,25 @@ export function Navbar() {
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Agregar Proveedor
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link
+                        href="/dashboard/mis-eventos"
+                        className="w-full"
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        Mis Eventos
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link
+                        href="/dashboard/agregar-evento"
+                        className="w-full"
+                      >
+                        <CalendarPlus className="mr-2 h-4 w-4" />
+                        Agregar Evento
                       </Link>
                     </DropdownMenuItem>
                   </>

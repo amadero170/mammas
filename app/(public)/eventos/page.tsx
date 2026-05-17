@@ -12,6 +12,7 @@ import type { Evento } from "@/lib/types";
 import { listEventsPublic } from "@/app/actions/eventos";
 import { EVENT_ZONAS } from "@/lib/constants/events";
 import { EVENT_TAGS } from "@/lib/constants/event-tags";
+import { createClient } from "@/lib/supabase/client";
 
 /* ── Date helpers ── */
 const DAY_NAMES = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
@@ -90,6 +91,11 @@ export default function EventosPage() {
 
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<Evento[]>([]);
+  const [user, setUser] = useState<{ id: string } | null>(null);
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => setUser(data.user));
+  }, []);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -272,14 +278,18 @@ export default function EventosPage() {
         )}
 
         {/* agregar + button */}
-        <div className="mx-auto mt-6 flex max-w-5xl justify-end">
-          <Button
-            variant="outline"
-            className="rounded-full border border-[#4c2f92] px-6 font-bold text-[#4c2f92] hover:bg-[#4c2f92]/5"
-          >
-            agregar +
-          </Button>
-        </div>
+        {user && (
+          <div className="mx-auto mt-6 flex max-w-5xl justify-end">
+            <Link href="/dashboard/agregar-evento">
+              <Button
+                variant="outline"
+                className="rounded-full border border-[#4c2f92] px-6 font-bold text-[#4c2f92] hover:bg-[#4c2f92]/5"
+              >
+                agregar +
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* ── Events Body ── */}

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { HeroSearchBar } from "@/components/hero-search-bar";
 import { createClient } from "@/lib/supabase/server";
 import Footer from "@/components/footer";
 /* ── Category icon mapping ── */
@@ -20,28 +20,36 @@ export default async function Home() {
   /* ── Fetch upcoming events from DB ── */
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const today = new Date().toISOString().split("T")[0];
 
   const { data: events } = await supabase
     .from("events")
     .select("*")
-    .gte("fecha_inicio", new Date().toISOString())
+    .eq("estado", "publicado")
     .order("fecha_inicio", { ascending: true })
-    .limit(3);
+    .limit(20);
 
-  const upcomingEvents = events ?? [];
+  // Filter out past events, then take first 3
+  const upcomingEvents = (events ?? [])
+    .filter((evt) => {
+      if (evt.fecha_fin) return evt.fecha_fin >= today;
+      return evt.fecha_inicio >= today;
+    })
+    .slice(0, 3);
 
   return (
     <main>
       {/* ═══════════════════════ HERO ═══════════════════════ */}
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
+      <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#2e1b40]">
         {/* Background image */}
         <Image
-          src="/Imágenes/home_image.jpg"
+          src="https://res.cloudinary.com/amadero170/image/upload/f_auto,q_auto/v1778972172/mammas-assets/mammas_home_image.jpg"
           alt="Mamás reunidas"
           fill
           priority
+          quality={60}
           className="object-cover"
-          sizes="100vw"
+          sizes="(max-width: 1400px) 100vw, 1400px"
         />
 
 
@@ -64,19 +72,7 @@ export default async function Home() {
             <p className="mb-3 text-xl font-bold text-brand-lime sm:text-2xl">
               ¿Que buscas hoy?
             </p>
-            <div className="flex items-center overflow-hidden rounded-full bg-white shadow-lg">
-              <input
-                type="text"
-                placeholder="Buscar servicios, proveedores..."
-                className="flex-1 bg-transparent px-6 py-3.5 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none sm:text-base"
-              />
-              <button
-                aria-label="Buscar"
-                className="mr-1.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4c2f92] text-white transition-colors hover:bg-[#3d2575]"
-              >
-                <Search className="h-5 w-5" />
-              </button>
-            </div>
+            <HeroSearchBar />
           </div>
 
           {/* CTA */}

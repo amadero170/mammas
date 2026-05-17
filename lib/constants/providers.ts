@@ -1,20 +1,24 @@
 export const PROVIDER_CATEGORIAS = [
   "Alimento",
-  "Autos y transporte",
   "Belleza",
   "Bienes Raíces",
   "Bienestar",
   "Casa y Decoración",
+  "Doméstico",
+  "Educación",
   "Emergencias",
   "Entretenimiento / Parques",
   "Escuelas y clases",
   "Fiestas",
   "Fotografía/Impresiones/Diseñadores",
   "Mascotas",
+  "Mecánico",
   "Médicos",
   "Medio Ambiente",
   "Oficios",
-  "Trámites y servicios",
+  "Reparaciones",
+  "Trámites",
+  "Transporte"
 ] as const;
 
 export const PROVIDER_ZONAS = [

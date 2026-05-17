@@ -41,6 +41,7 @@ export interface Proveedor {
   zona: string | null;
   telefono: string | null;
   tags: string[];
+  mama_owned: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -61,7 +62,7 @@ export interface CreateSolicitudData {
   mensaje?: string;
 }
 
-export type EstadoEvento = "draft" | "published";
+export type EstadoEvento = "draft" | "publicado";
 
 export interface Evento {
   id: string;

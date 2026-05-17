@@ -11,6 +11,7 @@ export type ProviderUpsertInput = {
   zona?: string | null;
   telefono?: string | null;
   tags?: string[] | null;
+  mama_owned?: boolean;
   sitio_web?: string | null;
   facebook?: string | null;
   instagram?: string | null;
@@ -80,6 +81,7 @@ export async function upsertProvider(
       zona: input.zona ?? null,
       telefono: input.telefono ?? null,
       tags: input.tags ?? [],
+      mama_owned: input.mama_owned ?? false,
       sitio_web: input.sitio_web ?? null,
       facebook: input.facebook ?? null,
       instagram: input.instagram ?? null,
@@ -102,6 +104,7 @@ export async function upsertProvider(
     zona: input.zona ?? null,
     telefono: input.telefono ?? null,
     tags: input.tags ?? [],
+    mama_owned: input.mama_owned ?? false,
     sitio_web: input.sitio_web ?? null,
     facebook: input.facebook ?? null,
     instagram: input.instagram ?? null,
@@ -142,6 +145,7 @@ export type ProviderCreateInput = {
   zona?: string | null;
   telefono?: string | null;
   tags?: string[] | null;
+  mama_owned?: boolean;
   sitio_web?: string | null;
   facebook?: string | null;
   instagram?: string | null;
@@ -167,7 +171,7 @@ export async function createProviderAsMamma(
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "mamma") {
+  if (profile?.role !== "mamma" && profile?.role !== "admin") {
     return { success: false, error: "No autorizado" };
   }
 
@@ -182,6 +186,7 @@ export async function createProviderAsMamma(
     zona: input.zona ?? null,
     telefono: input.telefono ?? null,
     tags: input.tags ?? [],
+    mama_owned: input.mama_owned ?? false,
     sitio_web: input.sitio_web ?? null,
     facebook: input.facebook ?? null,
     instagram: input.instagram ?? null,
@@ -225,7 +230,7 @@ export async function listMyProviders(
     .eq("id", user.id)
     .single();
 
-  if (profile?.role !== "mamma") {
+  if (profile?.role !== "mamma" && profile?.role !== "admin") {
     return { success: false, error: "No autorizado" };
   }
 

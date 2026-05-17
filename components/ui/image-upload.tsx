@@ -1,6 +1,7 @@
 "use client";
 
 import { CldUploadWidget } from "next-cloudinary";
+import { useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ImagePlus, Trash } from "lucide-react";
 import Image from "next/image";
@@ -20,11 +21,28 @@ export function ImageUpload({
   value,
   folder = "mamas"
 }: ImageUploadProps) {
-  const onUpload = (result: any) => {
+
+  // Restore scroll whenever the Cloudinary widget iframe is removed from the DOM
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const iframe = document.querySelector("iframe[src*='cloudinary']");
+      if (!iframe && document.body.style.overflow === "hidden") {
+        document.body.style.overflow = "";
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
+  const onUpload = useCallback((result: any) => {
     if (result.event === "success") {
       onChange(result.info.secure_url, result.info.public_id);
+      // Restore scroll after successful upload
+      setTimeout(() => {
+        document.body.style.overflow = "";
+      }, 300);
     }
-  };
+  }, [onChange]);
 
   return (
     <div>
@@ -53,8 +71,8 @@ export function ImageUpload({
       </div>
       {!value && (
         <CldUploadWidget 
-          onSuccess={onUpload} 
-          uploadPreset="ml_default" // It usually uses default if not provided, or we can just specify options
+          onSuccess={onUpload}
+          uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "ml_default"} 
           options={{
             folder: folder,
             maxFiles: 1,
@@ -84,3 +102,4 @@ export function ImageUpload({
     </div>
   );
 }
+
