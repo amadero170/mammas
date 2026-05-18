@@ -264,6 +264,64 @@ export async function createEventAsMamma(
   return { success: true };
 }
 
+export async function updateMyEvent(
+  id: string,
+  input: Omit<EventUpsertInput, "id">
+): Promise<{ success: true } | { success: false; error: string }> {
+  const { ok, adminSupabase, user } = await assertAuth();
+  if (!ok || !user) return { success: false, error: "Debes iniciar sesión" };
+
+  // Verify ownership and draft status (estado !== 'publicado')
+  const { data: existing, error: getErr } = await adminSupabase
+    .from("events")
+    .select("id, creado_por, estado")
+    .eq("id", id)
+    .single();
+
+  if (getErr || !existing) return { success: false, error: "Evento no encontrado" };
+  if (existing.creado_por !== user.id) return { success: false, error: "No autorizado" };
+  if (existing.estado === "publicado") return { success: false, error: "Solo puedes editar eventos en estado borrador" };
+
+  if (!input.titulo?.trim()) {
+    return { success: false, error: "El título es requerido" };
+  }
+  if (!input.descripcion?.trim()) {
+    return { success: false, error: "La descripción es requerida" };
+  }
+  if (!input.fecha_inicio) {
+    return { success: false, error: "La fecha de inicio es requerida" };
+  }
+  if (!input.ubicacion?.trim()) {
+    return { success: false, error: "La ubicación es requerida" };
+  }
+
+  const payload = {
+    titulo: input.titulo.trim(),
+    descripcion: input.descripcion.trim(),
+    fecha_inicio: input.fecha_inicio,
+    fecha_fin: input.fecha_fin || null,
+    ubicacion: input.ubicacion.trim(),
+    direccion: input.direccion || null,
+    google_maps_link: input.google_maps_link || null,
+    imagen_url: input.imagen_url || null,
+    imagen_public_id: input.imagen_public_id || null,
+    link_externo: input.link_externo || null,
+    horario_inicio: input.horario_inicio || null,
+    horario_fin: input.horario_fin || null,
+    telefono: input.telefono || null,
+    precios: input.precios || null,
+    zona: input.zona || null,
+  };
+
+  const { error } = await adminSupabase
+    .from("events")
+    .update(payload)
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
 export async function listMyEvents(filters?: {
   q?: string;
   categoria?: string;

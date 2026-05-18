@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Proveedor } from "@/lib/types";
 
 export type ProviderUpsertInput = {
@@ -202,6 +203,58 @@ export async function createProviderAsMamma(
   return { success: true };
 }
 
+export async function updateMyProvider(
+  id: string,
+  input: ProviderCreateInput
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: "No autenticado" };
+
+  // Verify ownership and draft status (is_active = false)
+  const { data: existing } = await supabase
+    .from("providers")
+    .select("id, creado_por, is_active")
+    .eq("id", id)
+    .single();
+
+  if (!existing) return { success: false, error: "Proveedor no encontrado" };
+  if (existing.creado_por !== user.id) return { success: false, error: "No autorizado" };
+  if (existing.is_active) return { success: false, error: "Solo podés editar proveedores que aún no fueron aprobados" };
+
+  if (!input.nombre?.trim()) {
+    return { success: false, error: "El nombre es requerido" };
+  }
+
+  const payload = {
+    nombre: input.nombre.trim(),
+    descripcion: input.descripcion ?? null,
+    categoria: input.categoria ?? null,
+    zona: input.zona ?? null,
+    telefono: input.telefono ?? null,
+    tags: input.tags ?? [],
+    mama_owned: input.mama_owned ?? false,
+    sitio_web: input.sitio_web ?? null,
+    facebook: input.facebook ?? null,
+    instagram: input.instagram ?? null,
+    direccion: input.direccion ?? null,
+    logo_url: input.logo_url ?? null,
+    logo_public_id: input.logo_public_id ?? null,
+  };
+
+  const adminSupabase = createAdminClient();
+
+  const { error } = await adminSupabase
+    .from("providers")
+    .update(payload)
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
 export type ProvidersPublicFilters = {
   q?: string;
   categoria?: string;
@@ -268,9 +321,9 @@ export async function listProvidersPublic(
     query = query.or(`nombre.ilike.%${q}%,descripcion.ilike.%${q}%`);
   }
 
-  // Tags filter (AND): provider must include ALL selected tags
+  // Tags filter (OR): provider must include at least ONE selected tag
   if (filters.tags && filters.tags.length > 0) {
-    query = query.contains("tags", filters.tags);
+    query = query.overlaps("tags", filters.tags);
   }
 
   const { data, error } = await query.order("updated_at", { ascending: false });

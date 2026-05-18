@@ -7,8 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import type { Proveedor } from "@/lib/types";
-import { listMyProviders } from "@/app/actions/proveedores";
+import { listMyProviders, updateMyProvider } from "@/app/actions/proveedores";
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ProviderForm } from "@/components/forms/provider-form";
 
 export default function MisProveedoresPage() {
   const [q, setQ] = useState("");
@@ -17,6 +25,7 @@ export default function MisProveedoresPage() {
 
   const [loading, setLoading] = useState(false);
   const [providers, setProviders] = useState<Proveedor[]>([]);
+  const [editingProvider, setEditingProvider] = useState<Proveedor | null>(null);
 
   const fetchProviders = async () => {
     setLoading(true);
@@ -164,9 +173,44 @@ export default function MisProveedoresPage() {
                   ) : null}
                 </div>
               </CardContent>
+              {!p.is_active && (
+                <div className="px-6 pb-4 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingProvider(p)}
+                  >
+                    Editar borrador
+                  </Button>
+                </div>
+              )}
             </Card>
           ))}
         </div>
+      )}
+
+      {editingProvider && (
+        <Dialog open={!!editingProvider} onOpenChange={(open) => !open && setEditingProvider(null)}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Editar Proveedor</DialogTitle>
+              <DialogDescription>
+                Modificá los datos del proveedor seleccionado. Los cambios requerirán aprobación.
+              </DialogDescription>
+            </DialogHeader>
+            <ProviderForm
+              provider={editingProvider}
+              onSubmit={(values) => updateMyProvider(editingProvider.id, values)}
+              submitLabel="Guardar Cambios"
+              savingLabel="Guardando..."
+              onCancel={() => setEditingProvider(null)}
+              onSuccess={() => {
+                setEditingProvider(null);
+                fetchProviders();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

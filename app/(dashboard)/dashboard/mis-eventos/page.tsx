@@ -8,13 +8,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import type { Evento } from "@/lib/types";
-import { listMyEvents, deleteMyEvent } from "@/app/actions/eventos";
+import { listMyEvents, deleteMyEvent, updateMyEvent } from "@/app/actions/eventos";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { EventForm } from "@/components/forms/event-form";
 
 export default function MisEventosPage() {
   const [q, setQ] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<Evento[]>([]);
+  const [editingEvent, setEditingEvent] = useState<Evento | null>(null);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -157,9 +166,44 @@ export default function MisEventosPage() {
                   </p>
                 )}
               </CardContent>
+              {evt.estado !== "publicado" && (
+                <div className="px-6 pb-4 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingEvent(evt)}
+                  >
+                    Editar borrador
+                  </Button>
+                </div>
+              )}
             </Card>
           ))}
         </div>
+      )}
+
+      {editingEvent && (
+        <Dialog open={!!editingEvent} onOpenChange={(open) => !open && setEditingEvent(null)}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Editar Evento</DialogTitle>
+              <DialogDescription>
+                Modificá los datos del evento en estado borrador. Los cambios requerirán aprobación del administrador.
+              </DialogDescription>
+            </DialogHeader>
+            <EventForm
+              event={editingEvent}
+              onSubmit={(values) => updateMyEvent(editingEvent.id, values)}
+              submitLabel="Guardar Cambios"
+              savingLabel="Guardando..."
+              onCancel={() => setEditingEvent(null)}
+              onSuccess={() => {
+                setEditingEvent(null);
+                fetchEvents();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

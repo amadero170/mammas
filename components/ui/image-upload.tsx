@@ -77,6 +77,9 @@ export function ImageUpload({
             folder: folder,
             maxFiles: 1,
             sources: ["local", "url", "camera", "instagram"],
+            resourceType: "image",
+            showPoweredBy: false,
+            clientAllowedFormats: ["jpg", "jpeg", "png", "gif", "webp"],
           }}
         >
           {({ open }) => {
