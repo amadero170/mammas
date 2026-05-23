@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LoginModal } from "@/components/login-modal";
@@ -169,20 +170,16 @@ export function Navbar() {
       </Suspense>
       <nav className={`fixed top-0 z-50 w-full transition-colors duration-300 ${navBg}`}>
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-8">
-        {/* Logo — AllerDisplay "MAMÁS mamas gone wild" */}
-        <Link href="/" className="flex items-center gap-1.5 transition-opacity hover:opacity-80">
-          <span className={`font-aller text-xl leading-none tracking-wide ${themeColor} sm:text-2xl`}>
-            MA
-            <br />
-            MÁS
-          </span>
-          <span className={`hidden text-[10px] font-bold leading-tight ${themeColor} sm:block`}>
-            mamás
-            <br />
-            gone
-            <br />
-            wild
-          </span>
+        {/* Logo — image-based */}
+        <Link href="/" className="flex items-center transition-opacity hover:opacity-80">
+          <Image
+            src={isLightTheme ? "/iconos/LOGOS-33.png" : "/iconos/LOGOS-32.png"}
+            alt="Mamás Gone Wild"
+            width={100}
+            height={40}
+            className="h-10 w-auto object-contain"
+            priority
+          />
         </Link>
 
         {/* Desktop Navigation */}

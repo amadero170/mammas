@@ -73,3 +73,8 @@ CREATE INDEX IF NOT EXISTS events_estado_idx ON public.events (estado);
 CREATE INDEX IF NOT EXISTS events_fecha_inicio_idx ON public.events (fecha_inicio);
 CREATE INDEX IF NOT EXISTS events_categoria_idx ON public.events (categoria);
 CREATE INDEX IF NOT EXISTS events_zona_idx ON public.events (zona);
+
+-- 4) Explicit Data API Grants (Supabase Security Best Practices)
+GRANT SELECT ON public.events TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.events TO authenticated;
+GRANT ALL ON public.events TO service_role;

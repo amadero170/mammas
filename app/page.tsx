@@ -131,17 +131,14 @@ export default async function Home() {
       {/* ═══════════════════════ ABOUT / INTRO ═══════════════════════ */}
       <section className="bg-[#4c2f92] py-16 text-white">
         <div className="container mx-auto max-w-3xl px-4 text-center">
-          {/* Logo text placeholder */}
-          <h2 className="font-aller text-4xl uppercase tracking-wider text-brand-lime sm:text-5xl">
-            MAMAS{" "}
-            <span className="text-sm font-karla normal-case tracking-normal text-brand-sage sm:text-base">
-              mamas
-              <br />
-              gone
-              <br />
-              wild
-            </span>
-          </h2>
+          {/* Logo image */}
+          <Image
+            src="/iconos/LOGOS-34.png"
+            alt="Mamás Gone Wild"
+            width={320}
+            height={80}
+            className="mx-auto h-16 w-auto object-contain sm:h-20"
+          />
 
           <p className="mt-8 text-base font-semibold leading-relaxed text-white sm:text-lg">
             Mamas Gone Wild es una red de mamás en Bahía de Banderas donde

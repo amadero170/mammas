@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function Footer() {
@@ -37,7 +38,14 @@ export default async function Footer() {
 
         <div className="my-12 h-px w-full bg-white/20" />
 
-        <div className="flex flex-col gap-8 text-sm font-semibold md:flex-row md:gap-16">
+        <div className="flex flex-col gap-8 text-sm font-semibold md:flex-row md:items-start md:gap-16">
+          <Image
+            src="/iconos/LOGOS-34.png"
+            alt="Mamás Gone Wild"
+            width={200}
+            height={50}
+            className="h-10 w-auto object-contain"
+          />
           <div className="flex flex-col gap-2">
             <Link href="/" className="transition-colors hover:text-[#e5f34a]">
               inicio

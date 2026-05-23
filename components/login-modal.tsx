@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
+import Image from "next/image";
 import { login } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +75,15 @@ export function LoginModal({ open, onOpenChange }: LoginModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader>
+          <div className="flex justify-center mb-2">
+            <Image
+              src="/iconos/LOGOS-33.png"
+              alt="Mamás Gone Wild"
+              width={80}
+              height={80}
+              className="h-16 w-auto object-contain"
+            />
+          </div>
           <DialogTitle className="text-center text-2xl font-bold">
             Iniciar Sesión
           </DialogTitle>

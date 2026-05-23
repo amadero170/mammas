@@ -121,3 +121,7 @@ values
   ('Espacio Juego', 'Playroom y eventos para peques.', 'Servicios', array['eventos','juego'], 'Bahía Blanca', '291-000-0033', '2910000033', '@espaciojuego', null, null, true)
 on conflict do nothing;
 
+-- 5) Explicit Data API Grants (Supabase Security Best Practices)
+GRANT SELECT ON public.proveedores TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.proveedores TO authenticated;
+GRANT ALL ON public.proveedores TO service_role;
