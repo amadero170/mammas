@@ -88,3 +88,18 @@ export interface Evento {
   created_at: string;
   updated_at: string;
 }
+
+export interface Rating {
+  id: string;
+  provider_id: string;
+  user_id: string;
+  score: number; // 1-5
+  created_at: string;
+}
+
+/** Proveedor enriched with computed rating data for display */
+export interface ProveedorConRating extends Proveedor {
+  avg_rating: number; // promedio 0-5 (0 = sin calificaciones)
+  total_ratings: number; // número total de calificaciones
+  my_rating: number | null; // calificación del usuario actual (null si no ha calificado)
+}

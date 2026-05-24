@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -25,9 +25,12 @@ import {
 
 import type { Proveedor } from "@/lib/types";
 import { listProvidersPublic } from "@/app/actions/proveedores";
+import { getProviderRatingsSummary, getMyRatings, type RatingSummary } from "@/app/actions/ratings";
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
 import { createClient } from "@/lib/supabase/client";
+import { RatingModal } from "@/components/rating-modal";
+import { LoginModal } from "@/components/login-modal";
 
 /** Asegura que la URL tenga protocolo https:// */
 function ensureProtocol(url: string): string {
@@ -49,9 +52,28 @@ function DirectorioContent() {
   const [loading, setLoading] = useState(false);
   const [providers, setProviders] = useState<Proveedor[]>([]);
   const [user, setUser] = useState<{ id: string } | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Rating state
+  const [ratingsSummary, setRatingsSummary] = useState<Record<string, RatingSummary>>({});
+  const [myRatings, setMyRatings] = useState<Record<string, number>>({});
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [ratingTarget, setRatingTarget] = useState<{ id: string; name: string } | null>(null);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data }) => setUser(data.user));
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      setUser(data.user);
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .single();
+        setUserRole(profile?.role ?? null);
+      }
+    });
   }, []);
 
   const filteredTagOptions = useMemo(() => {
@@ -59,6 +81,20 @@ function DirectorioContent() {
     if (!s) return PROVIDER_TAGS;
     return PROVIDER_TAGS.filter((t) => t.toLowerCase().includes(s));
   }, [tagSearch]);
+
+  const fetchRatings = useCallback(async (providerIds: string[]) => {
+    if (!providerIds.length) return;
+    try {
+      const [summaryData, myData] = await Promise.all([
+        getProviderRatingsSummary(providerIds),
+        getMyRatings(providerIds),
+      ]);
+      setRatingsSummary(summaryData);
+      setMyRatings(myData);
+    } catch {
+      // Silent fail — ratings are non-critical
+    }
+  }, []);
 
   const fetchProviders = async () => {
     setLoading(true);
@@ -76,6 +112,9 @@ function DirectorioContent() {
         return;
       }
       setProviders(res.providers);
+      // Fetch ratings for loaded providers
+      const ids = res.providers.map((p) => p.id);
+      fetchRatings(ids);
     } catch {
       toast.error("Error inesperado");
     } finally {
@@ -295,17 +334,28 @@ function DirectorioContent() {
                     <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground">
                       {p.categoria || "Categoría"} / {p.zona || "Zona"}
                     </p>
-                    <div className="mt-2 flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <Star
-                          key={i}
-                          className="h-4 w-4 fill-gray-400 text-gray-400"
-                        />
-                      ))}
-                      <span className="ml-2 text-xs font-bold text-gray-600">
-                        0
-                      </span>
-                    </div>
+                    {(() => {
+                      const summary = ratingsSummary[p.id];
+                      const avg = summary?.avg_rating ?? 0;
+                      const total = summary?.total_ratings ?? 0;
+                      return (
+                        <div className="mt-2 flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i <= Math.round(avg)
+                                  ? "fill-[#e5f34a] text-[#e5f34a]"
+                                  : "fill-gray-300 text-gray-300"
+                              }`}
+                            />
+                          ))}
+                          <span className="ml-2 text-xs font-bold text-gray-600">
+                            {total > 0 ? `${avg} (${total})` : "Sin calificaciones"}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -413,8 +463,22 @@ function DirectorioContent() {
                       <MapPin className="h-4 w-4" />
                     </a>
                   </div>
-                  <Button className="rounded-full bg-[#4c2f92] px-6 py-4 font-bold text-white hover:bg-[#3d2575]">
-                    Calificar
+                  <Button
+                    className="rounded-full bg-[#4c2f92] px-6 py-4 font-bold text-white hover:bg-[#3d2575]"
+                    onClick={() => {
+                      if (!user) {
+                        setLoginModalOpen(true);
+                        return;
+                      }
+                      if (userRole !== "mamma" && userRole !== "admin") {
+                        toast.error("Solo mamás pueden calificar");
+                        return;
+                      }
+                      setRatingTarget({ id: p.id, name: p.nombre });
+                      setRatingModalOpen(true);
+                    }}
+                  >
+                    {myRatings[p.id] ? "Editar calificación" : "Calificar"}
                   </Button>
                 </div>
               </div>
@@ -423,7 +487,46 @@ function DirectorioContent() {
         )}
       </div>
 
+      {/* Rating Modal */}
+      {ratingTarget && (
+        <RatingModal
+          open={ratingModalOpen}
+          onOpenChange={setRatingModalOpen}
+          providerId={ratingTarget.id}
+          providerName={ratingTarget.name}
+          currentRating={myRatings[ratingTarget.id] ?? null}
+          onRated={(providerId, score) => {
+            // Update local state immediately
+            setMyRatings((prev) => ({ ...prev, [providerId]: score }));
+            // Recalculate summary optimistically
+            setRatingsSummary((prev) => {
+              const existing = prev[providerId];
+              const hadPrevious = myRatings[providerId] != null;
+              if (existing) {
+                const newTotal = hadPrevious ? existing.total_ratings : existing.total_ratings + 1;
+                const oldSum = existing.avg_rating * existing.total_ratings;
+                const newSum = hadPrevious
+                  ? oldSum - (myRatings[providerId] ?? 0) + score
+                  : oldSum + score;
+                return {
+                  ...prev,
+                  [providerId]: {
+                    avg_rating: Math.round((newSum / newTotal) * 10) / 10,
+                    total_ratings: newTotal,
+                  },
+                };
+              }
+              return {
+                ...prev,
+                [providerId]: { avg_rating: score, total_ratings: 1 },
+              };
+            });
+          }}
+        />
+      )}
 
+      {/* Login Modal */}
+      <LoginModal open={loginModalOpen} onOpenChange={setLoginModalOpen} />
     </div>
   );
 }
