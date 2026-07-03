@@ -152,7 +152,12 @@ export function Navbar() {
     pathname === "/directorio" ||
     pathname === "/eventos" ||
     pathname?.startsWith("/dashboard") ||
-    pathname?.startsWith("/admin");
+    pathname?.startsWith("/admin") ||
+    pathname === "/solicitar-acceso" ||
+    pathname === "/login" ||
+    pathname === "/registro" ||
+    pathname === "/recuperar" ||
+    pathname === "/actualizar-contrasena";
   const themeColor = isLightTheme ? "text-[#4c2f92]" : "text-[#e5f34a]";
   const themeColorHover = isLightTheme ? "hover:text-[#4c2f92]" : "hover:text-[#e5f34a]";
   const themeColor80 = isLightTheme ? "text-[#4c2f92]/80" : "text-[#e5f34a]/80";
