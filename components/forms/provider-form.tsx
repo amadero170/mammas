@@ -17,7 +17,7 @@ import type { Proveedor } from "@/lib/types";
 export type ProviderFormValues = {
   nombre: string;
   descripcion: string;
-  categoria: string;
+  categorias: string[];
   zona: string;
   telefono: string;
   tags: string[];
@@ -30,11 +30,13 @@ export type ProviderFormValues = {
   logo_public_id: string;
 };
 
+const MAX_CATEGORIAS = 3;
+
 function emptyForm(): ProviderFormValues {
   return {
     nombre: "",
     descripcion: "",
-    categoria: "",
+    categorias: [],
     zona: "",
     telefono: "",
     tags: [],
@@ -52,7 +54,7 @@ function fromProveedor(p: Proveedor): ProviderFormValues {
   return {
     nombre: p.nombre ?? "",
     descripcion: p.descripcion ?? "",
-    categoria: p.categoria ?? "",
+    categorias: p.categorias ?? [],
     zona: p.zona ?? "",
     telefono: p.telefono ?? "",
     tags: p.tags ?? [],
@@ -185,22 +187,64 @@ export function ProviderForm({
         />
       </div>
 
-      {/* Categoría + Zona */}
+      {/* Categorías (máx 3) + Zona */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label>Categoría</Label>
-          <select
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            value={form.categoria}
-            onChange={(e) => set("categoria", e.target.value)}
-          >
-            <option value="">Seleccionar categoría</option>
-            {PROVIDER_CATEGORIAS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <Label>Categorías (máx {MAX_CATEGORIAS})</Label>
+          <div className="rounded-md border bg-background p-3 max-h-48 overflow-y-auto space-y-2">
+            {PROVIDER_CATEGORIAS.map((c) => {
+              const checked = form.categorias.includes(c);
+              const disabled = !checked && form.categorias.length >= MAX_CATEGORIAS;
+              return (
+                <label
+                  key={c}
+                  className={`flex items-center gap-2 text-sm cursor-pointer ${
+                    disabled ? "opacity-40 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={() => {
+                      setForm((f) => ({
+                        ...f,
+                        categorias: checked
+                          ? f.categorias.filter((cat) => cat !== c)
+                          : [...f.categorias, c],
+                      }));
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-[#4c2f92] focus:ring-[#4c2f92]"
+                  />
+                  {c}
+                </label>
+              );
+            })}
+          </div>
+          {form.categorias.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {form.categorias.map((c) => (
+                <span
+                  key={c}
+                  className="inline-flex items-center gap-1 rounded-full bg-[#4c2f92]/10 px-2.5 py-0.5 text-xs font-medium text-[#4c2f92]"
+                >
+                  {c}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        categorias: f.categorias.filter((cat) => cat !== c),
+                      }))
+                    }
+                    className="ml-0.5 text-[#4c2f92]/60 hover:text-[#4c2f92]"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="grid gap-2">
           <Label>Zona</Label>

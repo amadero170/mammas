@@ -150,7 +150,7 @@ export default function MisProveedoresPage() {
               <CardHeader>
                 <CardTitle className="text-lg">{p.nombre}</CardTitle>
                 <div className="flex flex-wrap gap-2">
-                  {p.categoria ? <Badge>{p.categoria}</Badge> : null}
+                  {p.categorias?.map((cat) => <Badge key={cat}>{cat}</Badge>)}
                   {p.zona ? <Badge variant="secondary">{p.zona}</Badge> : null}
                   <Badge variant={p.is_active ? "default" : "outline"}>
                     {p.is_active ? "Activo" : "Inactivo"}

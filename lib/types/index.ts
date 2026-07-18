@@ -37,7 +37,7 @@ export interface Proveedor {
   id: string;
   nombre: string;
   descripcion: string | null;
-  categoria: string | null;
+  categorias: string[];
   zona: string | null;
   telefono: string | null;
   tags: string[];

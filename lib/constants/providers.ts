@@ -23,9 +23,11 @@ export const PROVIDER_CATEGORIAS = [
 
 export const PROVIDER_ZONAS = [
   "Bucerías",
+  "La Cruz de Huanacaxtle",
+  "Mezcales",
   "Nuevo Vallarta",
   "Puerto Vallarta",
   "Punta Mita",
-  "Mezcales",
+  "Todas las zonas",
 ] as const;
 

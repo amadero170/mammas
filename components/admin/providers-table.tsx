@@ -84,7 +84,7 @@ export function ProvidersTable({ providers }: Props) {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
-              <TableHead>Categoría</TableHead>
+              <TableHead>Categorías</TableHead>
               <TableHead>Zona</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Actualizado</TableHead>
@@ -95,7 +95,7 @@ export function ProvidersTable({ providers }: Props) {
             {providers.map((p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{p.nombre}</TableCell>
-                <TableCell>{p.categoria || "-"}</TableCell>
+                <TableCell>{p.categorias?.length ? p.categorias.join(" - ") : "-"}</TableCell>
                 <TableCell>{p.zona || "-"}</TableCell>
                 <TableCell>
                   {p.is_active ? (

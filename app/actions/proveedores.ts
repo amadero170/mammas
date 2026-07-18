@@ -8,7 +8,7 @@ export type ProviderUpsertInput = {
   id?: string;
   nombre: string;
   descripcion?: string | null;
-  categoria?: string | null;
+  categorias?: string[] | null;
   zona?: string | null;
   telefono?: string | null;
   tags?: string[] | null;
@@ -78,7 +78,7 @@ export async function upsertProvider(
     const payload = {
       nombre: input.nombre.trim(),
       descripcion: input.descripcion ?? null,
-      categoria: input.categoria ?? null,
+      categorias: input.categorias ?? [],
       zona: input.zona ?? null,
       telefono: input.telefono ?? null,
       tags: input.tags ?? [],
@@ -101,7 +101,7 @@ export async function upsertProvider(
   const payload = {
     nombre: input.nombre.trim(),
     descripcion: input.descripcion ?? null,
-    categoria: input.categoria ?? null,
+    categorias: input.categorias ?? [],
     zona: input.zona ?? null,
     telefono: input.telefono ?? null,
     tags: input.tags ?? [],
@@ -142,7 +142,7 @@ export async function toggleProviderActive(
 export type ProviderCreateInput = {
   nombre: string;
   descripcion?: string | null;
-  categoria?: string | null;
+  categorias?: string[] | null;
   zona?: string | null;
   telefono?: string | null;
   tags?: string[] | null;
@@ -183,7 +183,7 @@ export async function createProviderAsMamma(
   const payload = {
     nombre: input.nombre.trim(),
     descripcion: input.descripcion ?? null,
-    categoria: input.categoria ?? null,
+    categorias: input.categorias ?? [],
     zona: input.zona ?? null,
     telefono: input.telefono ?? null,
     tags: input.tags ?? [],
@@ -232,7 +232,7 @@ export async function updateMyProvider(
   const payload = {
     nombre: input.nombre.trim(),
     descripcion: input.descripcion ?? null,
-    categoria: input.categoria ?? null,
+    categorias: input.categorias ?? [],
     zona: input.zona ?? null,
     telefono: input.telefono ?? null,
     tags: input.tags ?? [],
@@ -257,7 +257,7 @@ export async function updateMyProvider(
 }
 export type ProvidersPublicFilters = {
   q?: string;
-  categoria?: string;
+  categoria?: string; // single category from filter dropdown — matched via overlaps
   zona?: string;
   tags?: string[];
 };
@@ -289,7 +289,7 @@ export async function listMyProviders(
 
   let query = supabase.from("providers").select("*").eq("creado_por", user.id);
 
-  if (filters.categoria) query = query.eq("categoria", filters.categoria);
+  if (filters.categoria) query = query.overlaps("categorias", [filters.categoria]);
   if (filters.zona) query = query.eq("zona", filters.zona);
 
   const q = filters.q?.trim();
@@ -312,7 +312,7 @@ export async function listProvidersPublic(
 
   let query = supabase.from("providers").select("*").eq("is_active", true);
 
-  if (filters.categoria) query = query.eq("categoria", filters.categoria);
+  if (filters.categoria) query = query.overlaps("categorias", [filters.categoria]);
   if (filters.zona) query = query.eq("zona", filters.zona);
 
   const q = filters.q?.trim();

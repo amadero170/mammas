@@ -332,7 +332,7 @@ function DirectorioContent() {
                       {p.nombre}
                     </h3>
                     <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground">
-                      {p.categoria || "Categoría"} / {p.zona || "Zona"}
+                      {(p.categorias?.length ? p.categorias.join(" - ") : "Categoría")} / {p.zona || "Zona"}
                     </p>
                     {(() => {
                       const summary = ratingsSummary[p.id];

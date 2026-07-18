@@ -12,7 +12,7 @@ export default function AgregarProveedorPage() {
     return createProviderAsMamma({
       nombre: values.nombre,
       descripcion: values.descripcion || null,
-      categoria: values.categoria || null,
+      categorias: values.categorias.length ? values.categorias : [],
       zona: values.zona || null,
       telefono: values.telefono || null,
       tags: values.tags,
