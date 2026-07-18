@@ -382,9 +382,18 @@ function DirectorioContent() {
                       <span className="font-semibold text-[#2e1b40]">
                         Dirección:
                       </span>{" "}
-                      <span className="text-[#2e1b40]/80">
-                        {p.direccion || "—"}
-                      </span>
+                      {p.direccion ? (
+                        <a
+                          href={ensureProtocol(p.direccion)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#4c2f92] underline underline-offset-2 hover:text-[#3d2575] inline-block max-w-[70%] truncate align-bottom"
+                        >
+                          {p.direccion}
+                        </a>
+                      ) : (
+                        <span className="text-[#2e1b40]/80">—</span>
+                      )}
                     </div>
                     
                     {/* Tags & Badge */}
