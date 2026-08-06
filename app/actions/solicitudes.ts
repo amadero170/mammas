@@ -23,6 +23,21 @@ export async function createSolicitud(data: CreateSolicitudData) {
 
     if (error) {
       console.error("Error creating solicitud:", error);
+
+      // Mapear error de clave duplicada a un mensaje amigable
+      if (
+        error.code === "23505" ||
+        error.message.includes("duplicate key") ||
+        error.message.includes("unique constraint") ||
+        error.message.includes("mammas_autorizadas_email_key")
+      ) {
+        return {
+          success: false,
+          error:
+            "Este correo electrónico ya cuenta con una solicitud registrada o ya está autorizado.",
+        };
+      }
+
       return { success: false, error: error.message };
     }
 
