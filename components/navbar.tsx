@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LoginModal } from "@/components/login-modal";
+import { AccountDialog } from "@/components/account-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,7 @@ import {
   ChevronDown,
   Calendar,
   CalendarPlus,
+
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -63,6 +65,7 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
@@ -254,11 +257,11 @@ export function Navbar() {
                   </>
                 )}
                 <DropdownMenuItem
-                  aria-disabled
-                  className="opacity-50 pointer-events-none hidden"
+                  onClick={() => setAccountDialogOpen(true)}
+                  className="cursor-pointer"
                 >
                   <User className="mr-2 h-4 w-4" />
-                  Mi Cuenta (próximamente)
+                  Mi Cuenta
                 </DropdownMenuItem>
                 {profile?.role !== "admin" && (
                   <>
@@ -392,13 +395,6 @@ export function Navbar() {
                       </Link>
                     </>
                   )}
-                  <div
-                    aria-disabled
-                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium opacity-50 pointer-events-none hidden"
-                  >
-                    <User className="h-5 w-5" />
-                    Mi Cuenta (próximamente)
-                  </div>
                   {profile?.role !== "admin" && (
                     <>
                       <Link
@@ -419,6 +415,17 @@ export function Navbar() {
                       </Link>
                     </>
                   )}
+                  <Separator className="my-4" />
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setAccountDialogOpen(true);
+                    }}
+                    className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all hover:bg-accent/50 hover:text-primary"
+                  >
+                    <User className="h-5 w-5" />
+                    Mi Cuenta
+                  </button>
                   <Separator className="my-4" />
                   <Button
                     variant="ghost"
@@ -447,6 +454,8 @@ export function Navbar() {
 
       {/* Login Modal */}
       <LoginModal open={loginModalOpen} onOpenChange={setLoginModalOpen} />
+      {/* Account Modal */}
+      {user && <AccountDialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen} user={user} role={profile?.role ?? null} />}
       </nav>
     </>
   );
