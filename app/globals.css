@@ -124,3 +124,13 @@
     font-family: "AllerDisplay", sans-serif;
   }
 }
+
+/* ── Cloudinary Upload Widget z-index & focus fix when inside Radix Dialog ── */
+#cloudinary-widget-holder,
+iframe[src*="cloudinary"],
+.cloudinary-widget-overlay,
+div[id*="cloudinary"] {
+  z-index: 999999 !important;
+  pointer-events: auto !important;
+}
+
