@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { EventsTable } from "@/components/admin/events-table";
 import type { Evento } from "@/lib/types";
+import { getUserDetailsMap } from "@/lib/user-utils";
 
 export default async function EventosAdminPage() {
   // Auth check with normal client
@@ -25,6 +26,11 @@ export default async function EventosAdminPage() {
     console.error("Error fetching events:", error);
   }
 
+  const userIds = (events || [])
+    .map((e) => e.creado_por)
+    .filter(Boolean) as string[];
+  const usersMap = await getUserDetailsMap(userIds);
+
   return (
     <div className="space-y-6">
       <div>
@@ -40,10 +46,10 @@ export default async function EventosAdminPage() {
           <p className="mt-2 text-sm text-muted-foreground/70">
             Creá un nuevo evento con el botón de arriba.
           </p>
-          <EventsTable events={[]} />
+          <EventsTable events={[]} usersMap={usersMap} />
         </div>
       ) : (
-        <EventsTable events={events as Evento[]} />
+        <EventsTable events={(events || []) as Evento[]} usersMap={usersMap} />
       )}
     </div>
   );

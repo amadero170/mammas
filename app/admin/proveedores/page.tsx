@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProvidersTable } from "@/components/admin/providers-table";
+import { getUserDetailsMap } from "@/lib/user-utils";
 
 export default async function ProveedoresPage() {
   const supabase = await createClient();
@@ -24,14 +25,12 @@ export default async function ProveedoresPage() {
 
   if (error) {
     console.error("Error fetching providers:", error);
-  } else {
-    console.log("[ADMIN/PROVEEDORES] providers fetched:", {
-      count: providers?.length ?? 0,
-      sample: providers?.[0]
-        ? { id: providers[0].id, nombre: providers[0].nombre }
-        : null,
-    });
   }
+
+  const userIds = (providers || [])
+    .map((p) => p.creado_por)
+    .filter(Boolean) as string[];
+  const usersMap = await getUserDetailsMap(userIds);
 
   return (
     <div className="space-y-6">
@@ -50,7 +49,7 @@ export default async function ProveedoresPage() {
           </p>
         </div>
       ) : (
-        <ProvidersTable providers={providers} />
+        <ProvidersTable providers={providers} usersMap={usersMap} />
       )}
     </div>
   );

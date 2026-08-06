@@ -12,12 +12,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import type { Evento } from "@/lib/types";
+import type { Evento, UserDetail } from "@/lib/types";
 import { toggleEventEstado } from "@/app/actions/eventos";
 import { EventFormDialog } from "@/components/admin/event-form-dialog";
+import { UserDetailModal } from "@/components/admin/user-detail-modal";
+import { User as UserIcon } from "lucide-react";
 
 type Props = {
   events: Evento[];
+  usersMap?: Record<string, UserDetail>;
 };
 
 function formatDate(dateString: string) {
@@ -28,8 +31,9 @@ function formatDate(dateString: string) {
   });
 }
 
-export function EventsTable({ events }: Props) {
+export function EventsTable({ events, usersMap = {} }: Props) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [dialog, setDialog] = useState<{
     open: boolean;
     event: Evento | null;
@@ -80,57 +84,75 @@ export function EventsTable({ events }: Props) {
             <TableRow>
               <TableHead>Título</TableHead>
               <TableHead>Fecha</TableHead>
-
               <TableHead>Zona</TableHead>
+              <TableHead>Cargado por</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {events.map((e) => (
-              <TableRow key={e.id}>
-                <TableCell className="font-medium">{e.titulo}</TableCell>
-                <TableCell>{formatDate(e.fecha_inicio)}</TableCell>
-
-                <TableCell>{e.zona || "-"}</TableCell>
-                <TableCell>
-                  {e.estado === "publicado" ? (
-                    <Badge variant="default">Publicado</Badge>
-                  ) : (
-                    <Badge variant="outline">Borrador</Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDialog({ open: true, event: e })}
-                    >
-                      Editar
-                    </Button>
-                    {e.estado === "publicado" ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={loadingId === e.id}
-                        onClick={() => onToggle(e.id, "draft")}
+            {events.map((e) => {
+              const creator = e.creado_por ? usersMap[e.creado_por] : null;
+              return (
+                <TableRow key={e.id}>
+                  <TableCell className="font-medium">{e.titulo}</TableCell>
+                  <TableCell>{formatDate(e.fecha_inicio)}</TableCell>
+                  <TableCell>{e.zona || "-"}</TableCell>
+                  <TableCell>
+                    {creator ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUser(creator)}
+                        className="text-left font-medium text-primary hover:underline hover:text-primary/80 transition-colors inline-flex items-center gap-1.5"
                       >
-                        Despublicar
-                      </Button>
+                        <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{creator.nombre}</span>
+                      </button>
                     ) : (
-                      <Button
-                        size="sm"
-                        disabled={loadingId === e.id}
-                        onClick={() => onToggle(e.id, "publicado")}
-                      >
-                        Publicar
-                      </Button>
+                      <span className="text-muted-foreground text-xs font-mono">
+                        {e.creado_por ? `${e.creado_por.slice(0, 8)}...` : "-"}
+                      </span>
                     )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell>
+                    {e.estado === "publicado" ? (
+                      <Badge variant="default">Publicado</Badge>
+                    ) : (
+                      <Badge variant="outline">Borrador</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDialog({ open: true, event: e })}
+                      >
+                        Editar
+                      </Button>
+                      {e.estado === "publicado" ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={loadingId === e.id}
+                          onClick={() => onToggle(e.id, "draft")}
+                        >
+                          Despublicar
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          disabled={loadingId === e.id}
+                          onClick={() => onToggle(e.id, "publicado")}
+                        >
+                          Publicar
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -140,6 +162,15 @@ export function EventsTable({ events }: Props) {
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
         event={dialog.event}
       />
+
+      <UserDetailModal
+        open={!!selectedUser}
+        onOpenChange={(open) => {
+          if (!open) setSelectedUser(null);
+        }}
+        user={selectedUser}
+      />
     </div>
   );
 }
+

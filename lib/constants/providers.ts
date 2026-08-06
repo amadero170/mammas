@@ -22,12 +22,15 @@ export const PROVIDER_CATEGORIAS = [
 ] as const;
 
 export const PROVIDER_ZONAS = [
+  "Bahía de Banderas",
   "Bucerías",
   "La Cruz de Huanacaxtle",
   "Mezcales",
   "Nuevo Vallarta",
   "Puerto Vallarta",
   "Punta Mita",
+  "San Pancho",
+  "Sayulita",
   "Todas las zonas",
 ] as const;
 

@@ -33,6 +33,14 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface UserDetail {
+  id: string;
+  nombre: string;
+  email: string;
+  telefono: string | null;
+  role?: string | null;
+}
+
 export interface Proveedor {
   id: string;
   nombre: string;
@@ -43,6 +51,7 @@ export interface Proveedor {
   tags: string[];
   mama_owned: boolean;
   is_active: boolean;
+  creado_por?: string | null;
   created_at: string;
   updated_at: string;
   // Campos adicionales para links

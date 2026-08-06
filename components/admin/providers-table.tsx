@@ -12,12 +12,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import type { Proveedor } from "@/lib/types";
+import type { Proveedor, UserDetail } from "@/lib/types";
 import { toggleProviderActive } from "@/app/actions/proveedores";
 import { ProviderFormDialog } from "@/components/admin/provider-form-dialog";
+import { UserDetailModal } from "@/components/admin/user-detail-modal";
+import { User as UserIcon } from "lucide-react";
 
 type Props = {
   providers: Proveedor[];
+  usersMap?: Record<string, UserDetail>;
 };
 
 function formatDate(dateString: string) {
@@ -28,7 +31,7 @@ function formatDate(dateString: string) {
   });
 }
 
-export function ProvidersTable({ providers }: Props) {
+export function ProvidersTable({ providers, usersMap = {} }: Props) {
   console.log("[ADMIN/PROVEEDORES] ProvidersTable render", {
     count: providers?.length ?? 0,
     first: providers?.[0]
@@ -37,6 +40,7 @@ export function ProvidersTable({ providers }: Props) {
   });
 
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [dialog, setDialog] = useState<{
     open: boolean;
     provider: Proveedor | null;
@@ -86,56 +90,78 @@ export function ProvidersTable({ providers }: Props) {
               <TableHead>Nombre</TableHead>
               <TableHead>Categorías</TableHead>
               <TableHead>Zona</TableHead>
+              <TableHead>Cargado por</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Actualizado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {providers.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell className="font-medium">{p.nombre}</TableCell>
-                <TableCell>{p.categorias?.length ? p.categorias.join(" - ") : "-"}</TableCell>
-                <TableCell>{p.zona || "-"}</TableCell>
-                <TableCell>
-                  {p.is_active ? (
-                    <Badge variant="default">Activo</Badge>
-                  ) : (
-                    <Badge variant="outline">Inactivo</Badge>
-                  )}
-                </TableCell>
-                <TableCell>{formatDate(p.updated_at)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDialog({ open: true, provider: p })}
-                    >
-                      Editar
-                    </Button>
-                    {p.is_active ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={loadingId === p.id}
-                        onClick={() => onToggle(p.id, false)}
+            {providers.map((p) => {
+              const creator = p.creado_por ? usersMap[p.creado_por] : null;
+              return (
+                <TableRow key={p.id}>
+                  <TableCell className="font-medium">{p.nombre}</TableCell>
+                  <TableCell>
+                    {p.categorias?.length ? p.categorias.join(" - ") : "-"}
+                  </TableCell>
+                  <TableCell>{p.zona || "-"}</TableCell>
+                  <TableCell>
+                    {creator ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUser(creator)}
+                        className="text-left font-medium text-primary hover:underline hover:text-primary/80 transition-colors inline-flex items-center gap-1.5"
                       >
-                        Desactivar
-                      </Button>
+                        <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{creator.nombre}</span>
+                      </button>
                     ) : (
-                      <Button
-                        size="sm"
-                        disabled={loadingId === p.id}
-                        onClick={() => onToggle(p.id, true)}
-                      >
-                        Activar
-                      </Button>
+                      <span className="text-muted-foreground text-xs font-mono">
+                        {p.creado_por ? `${p.creado_por.slice(0, 8)}...` : "-"}
+                      </span>
                     )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell>
+                    {p.is_active ? (
+                      <Badge variant="default">Activo</Badge>
+                    ) : (
+                      <Badge variant="outline">Inactivo</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>{formatDate(p.updated_at)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDialog({ open: true, provider: p })}
+                      >
+                        Editar
+                      </Button>
+                      {p.is_active ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={loadingId === p.id}
+                          onClick={() => onToggle(p.id, false)}
+                        >
+                          Desactivar
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          disabled={loadingId === p.id}
+                          onClick={() => onToggle(p.id, true)}
+                        >
+                          Activar
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -145,6 +171,15 @@ export function ProvidersTable({ providers }: Props) {
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
         provider={dialog.provider}
       />
+
+      <UserDetailModal
+        open={!!selectedUser}
+        onOpenChange={(open) => {
+          if (!open) setSelectedUser(null);
+        }}
+        user={selectedUser}
+      />
     </div>
   );
 }
+
