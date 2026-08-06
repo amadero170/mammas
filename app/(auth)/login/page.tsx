@@ -32,8 +32,19 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // Verificar si el usuario ya está autenticado y redirigir según su rol
+  // Verificar si el usuario ya está autenticado o si hay un error en la URL
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("error") === "Invalid_Token") {
+      toast.error("Enlace no válido o expirado", {
+        description: "El enlace de recuperación ya venció o fue utilizado. Por favor solicita uno nuevo.",
+      });
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("error");
+      window.history.replaceState({}, "", url.toString());
+    }
+
     async function checkAuth() {
       const {
         data: { user },

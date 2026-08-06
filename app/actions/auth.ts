@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 export async function logout() {
   const supabase = await createClient();
@@ -93,12 +94,28 @@ export async function loginWithFacebook() {
   // return { success: !error, data, error: error?.message };
 }
 
+
 export async function recoverPassword(email: string) {
   const supabase = await createClient();
   
-  // Create callback URL dynamically based on environment
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  // Determine site URL dynamically from request headers or environment
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = headersList.get("x-forwarded-proto") || "http";
+  
+  let siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!siteUrl && host) {
+    siteUrl = `${protocol}://${host}`;
+  }
+  if (!siteUrl) {
+    siteUrl = "http://localhost:3000";
+  }
+  
+  // Remove trailing slash if present
+  siteUrl = siteUrl.replace(/\/$/, "");
   const callbackUrl = `${siteUrl}/auth/callback?next=/actualizar-contrasena`;
+
+  console.log("[AUTH] Requesting password recovery for:", email, "with callbackUrl:", callbackUrl);
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: callbackUrl,

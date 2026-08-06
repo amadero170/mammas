@@ -7,6 +7,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LoginModal } from "@/components/login-modal";
 import { AccountDialog } from "@/components/account-dialog";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,9 +47,18 @@ interface Profile {
 function LoginQueryListener({ setLoginModalOpen }: { setLoginModalOpen: (v: boolean) => void }) {
   const searchParams = useSearchParams();
   useEffect(() => {
+    if (searchParams.get("error") === "Invalid_Token") {
+      toast.error("Enlace no válido o expirado", {
+        description: "El enlace de recuperación ya venció o fue utilizado. Por favor solicita uno nuevo.",
+      });
+      // Clean up error param from URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("error");
+      window.history.replaceState({}, "", url.toString());
+    }
     if (searchParams.get("login") === "true") {
       setLoginModalOpen(true);
-      // Clean up the URL
+      // Clean up login param from URL
       const url = new URL(window.location.href);
       url.searchParams.delete("login");
       window.history.replaceState({}, "", url.toString());
