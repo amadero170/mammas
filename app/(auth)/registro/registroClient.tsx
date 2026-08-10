@@ -40,6 +40,8 @@ export default function RegistroClient() {
   const [inviteStatus, setInviteStatus] = useState<
     "loading" | "valid" | "invalid"
   >("loading");
+  const [inviteMessage, setInviteMessage] = useState<string>("");
+  const [inviteReason, setInviteReason] = useState<string>("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -64,6 +66,8 @@ export default function RegistroClient() {
       }
 
       setInviteStatus("invalid");
+      setInviteMessage(info.message);
+      setInviteReason(info.reason);
     }
 
     run();
@@ -110,15 +114,24 @@ export default function RegistroClient() {
         {inviteStatus === "invalid" ? (
           <div className="rounded-lg border border-dashed p-8 text-center">
             <p className="text-muted-foreground">
-              Este link no es válido, ya fue utilizado o venció.
+              {inviteMessage || "Este link no es válido, ya fue utilizado o venció."}
             </p>
-            <Button
-              className="mt-6"
-              variant="outline"
-              onClick={() => router.push("/")}
-            >
-              Volver al inicio
-            </Button>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+              {inviteReason === "used" ? (
+                <Button
+                  variant="default"
+                  onClick={() => router.push("/?login=true")}
+                >
+                  Iniciar sesión
+                </Button>
+              ) : null}
+              <Button
+                variant="outline"
+                onClick={() => router.push("/")}
+              >
+                Volver al inicio
+              </Button>
+            </div>
           </div>
         ) : (
           <Form {...form}>

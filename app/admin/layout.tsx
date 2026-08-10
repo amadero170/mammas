@@ -2,7 +2,7 @@ import Footer from "@/components/footer";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Users, ShoppingBag, Calendar } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingBag, Calendar, Settings } from "lucide-react";
 
 export default async function AdminLayout({
   children,
@@ -60,6 +60,13 @@ export default async function AdminLayout({
             >
               <Calendar className="h-4 w-4" />
               Eventos
+            </Link>
+            <Link
+              href="/admin/configuracion"
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-[#4c2f92] transition-colors whitespace-nowrap"
+            >
+              <Settings className="h-4 w-4" />
+              Configuración
             </Link>
           </nav>
           {children}

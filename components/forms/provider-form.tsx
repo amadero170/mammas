@@ -12,6 +12,7 @@ import { TagAutocomplete } from "@/components/ui/tag-autocomplete";
 
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
+import { getTags, getCategories, getZones } from "@/app/actions/configuracion";
 import type { Proveedor } from "@/lib/types";
 
 export type ProviderFormValues = {
@@ -102,10 +103,34 @@ export function ProviderForm({
   );
 
   const [form, setForm] = useState<ProviderFormValues>(initial);
+  const [categoriesList, setCategoriesList] = useState<string[]>([...PROVIDER_CATEGORIAS]);
+  const [zonesList, setZonesList] = useState<string[]>([...PROVIDER_ZONAS]);
+  const [tagsList, setTagsList] = useState<string[]>([...PROVIDER_TAGS]);
 
   useEffect(() => {
     setForm(initial);
   }, [initial]);
+
+  useEffect(() => {
+    async function loadOptions() {
+      const [catRes, zoneRes, tagRes] = await Promise.all([
+        getCategories("provider"),
+        getZones(),
+        getTags("provider"),
+      ]);
+
+      if (catRes.success && catRes.categories.length > 0) {
+        setCategoriesList(catRes.categories.map((c) => c.nombre));
+      }
+      if (zoneRes.success && zoneRes.zones.length > 0) {
+        setZonesList(zoneRes.zones.map((z) => z.nombre));
+      }
+      if (tagRes.success && tagRes.tags.length > 0) {
+        setTagsList(tagRes.tags.map((t) => t.nombre));
+      }
+    }
+    loadOptions();
+  }, []);
 
   const handleSubmit = async () => {
     if (!form.nombre.trim()) {
@@ -192,7 +217,7 @@ export function ProviderForm({
         <div className="grid gap-2">
           <Label>Categorías (máx {MAX_CATEGORIAS})</Label>
           <div className="rounded-md border bg-background p-3 max-h-48 overflow-y-auto space-y-2">
-            {PROVIDER_CATEGORIAS.map((c) => {
+            {categoriesList.map((c) => {
               const checked = form.categorias.includes(c);
               const disabled = !checked && form.categorias.length >= MAX_CATEGORIAS;
               return (
@@ -254,7 +279,7 @@ export function ProviderForm({
             onChange={(e) => set("zona", e.target.value)}
           >
             <option value="">Seleccionar zona</option>
-            {PROVIDER_ZONAS.map((z) => (
+            {zonesList.map((z) => (
               <option key={z} value={z}>
                 {z}
               </option>
@@ -277,7 +302,7 @@ export function ProviderForm({
       <div className="grid gap-2">
         <Label>Tags</Label>
         <TagAutocomplete
-          availableTags={PROVIDER_TAGS}
+          availableTags={tagsList}
           selectedTags={form.tags}
           onChange={(tags) => setForm((f) => ({ ...f, tags }))}
           placeholder="Escribí para buscar tags..."

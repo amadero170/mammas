@@ -198,7 +198,10 @@ export async function listEventsPublic(
 
   const q = filters.q?.trim();
   if (q) {
-    query = query.or(`titulo.ilike.%${q}%,descripcion.ilike.%${q}%`);
+    // Search across all text fields
+    query = query.or(
+      `titulo.ilike.%${q}%,descripcion.ilike.%${q}%,ubicacion.ilike.%${q}%,direccion.ilike.%${q}%,zona.ilike.%${q}%,telefono.ilike.%${q}%,precios.ilike.%${q}%,link_externo.ilike.%${q}%`
+    );
   }
 
   const { data, error } = await query.order("fecha_inicio", { ascending: true });
@@ -207,12 +210,41 @@ export async function listEventsPublic(
   // Filter out past events:
   // - If fecha_fin exists and is in the past → hide
   // - If no fecha_fin and fecha_inicio is in the past → hide
-  const filtered = (data ?? []).filter((evt) => {
+  let filtered = (data ?? []).filter((evt) => {
     if (evt.fecha_fin) return evt.fecha_fin >= today;
     return evt.fecha_inicio >= today;
-  });
+  }) as Evento[];
 
-  return { success: true, events: filtered as Evento[] };
+  // If text search is active, also include events matching via tags array
+  if (q) {
+    const qLower = q.toLowerCase();
+    const { data: allData } = await supabase
+      .from("events")
+      .select("*")
+      .eq("estado", "publicado")
+      .order("fecha_inicio", { ascending: true });
+
+    if (allData) {
+      const existingIds = new Set(filtered.map((e) => e.id));
+      const arrayMatches = (allData as Evento[]).filter(
+        (e) =>
+          !existingIds.has(e.id) &&
+          e.tags?.some((t: string) => t.toLowerCase().includes(qLower))
+      ).filter((evt) => {
+        // Apply same past-event filter
+        if (evt.fecha_fin) return evt.fecha_fin >= today;
+        return evt.fecha_inicio >= today;
+      }).filter((evt) => {
+        // Apply same category/zona filters
+        if (filters.categoria && evt.categoria !== filters.categoria) return false;
+        if (filters.zona && evt.zona !== filters.zona) return false;
+        return true;
+      });
+      filtered = [...filtered, ...arrayMatches];
+    }
+  }
+
+  return { success: true, events: filtered };
 }
 
 /* ═══════════════════════════════════════════════════════════

@@ -17,10 +17,12 @@ type InviteInfo =
   | {
       valid: false;
       reason: "missing_token" | "invalid" | "expired" | "used";
+      /** Human-readable message for the UI */
+      message: string;
     };
 
 export async function getInviteInfo(token: string): Promise<InviteInfo> {
-  if (!token) return { valid: false, reason: "missing_token" };
+  if (!token) return { valid: false, reason: "missing_token", message: "No se proporcionó un link de invitación. Verificá que el link esté completo." };
 
   const supabase = createAdminClient();
   const tokenHash = sha256Hex(token);
@@ -31,16 +33,16 @@ export async function getInviteInfo(token: string): Promise<InviteInfo> {
     .eq("invite_token_hash", tokenHash)
     .single();
 
-  if (error || !data) return { valid: false, reason: "invalid" };
-  if (data.estado !== "approved") return { valid: false, reason: "invalid" };
-  if (data.invite_used_at) return { valid: false, reason: "used" };
+  if (error || !data) return { valid: false, reason: "invalid", message: "Este link de invitación no es válido. Puede que haya sido reemplazado por uno nuevo." };
+  if (data.estado !== "approved") return { valid: false, reason: "invalid", message: "Tu solicitud aún no ha sido aprobada o fue rechazada. Contactá a las administradoras." };
+  if (data.invite_used_at) return { valid: false, reason: "used", message: "Este link ya fue utilizado para crear una cuenta. Si ya tenés cuenta, podés iniciar sesión." };
 
   const now = Date.now();
   const expiresMs = data.invite_expires_at
     ? new Date(data.invite_expires_at).getTime()
     : NaN;
   if (data.invite_expires_at && Number.isFinite(expiresMs) && expiresMs <= now) {
-    return { valid: false, reason: "expired" };
+    return { valid: false, reason: "expired", message: "Este link de invitación venció. Contactá a las administradoras para que te envíen uno nuevo." };
   }
 
   return {

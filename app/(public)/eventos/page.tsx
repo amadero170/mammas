@@ -12,6 +12,7 @@ import type { Evento } from "@/lib/types";
 import { listEventsPublic } from "@/app/actions/eventos";
 import { EVENT_ZONAS } from "@/lib/constants/events";
 import { EVENT_TAGS } from "@/lib/constants/event-tags";
+import { getCategories, getZones, getTags } from "@/app/actions/configuracion";
 import { createClient } from "@/lib/supabase/client";
 
 /* ── Date helpers ── */
@@ -127,6 +128,25 @@ export default function EventosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, zona]);
 
+  const [allZones, setAllZones] = useState<string[]>([...EVENT_ZONAS]);
+  const [allTags, setAllTags] = useState<string[]>([...EVENT_TAGS]);
+
+  useEffect(() => {
+    async function loadDynamicOptions() {
+      const [zoneRes, tagRes] = await Promise.all([
+        getZones(),
+        getTags("event"),
+      ]);
+      if (zoneRes.success && zoneRes.zones.length > 0) {
+        setAllZones(zoneRes.zones.map((z) => z.nombre));
+      }
+      if (tagRes.success && tagRes.tags.length > 0) {
+        setAllTags(tagRes.tags.map((t) => t.nombre));
+      }
+    }
+    loadDynamicOptions();
+  }, []);
+
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
@@ -135,9 +155,9 @@ export default function EventosPage() {
 
   const filteredTagOptions = useMemo(() => {
     const s = tagSearch.trim().toLowerCase();
-    if (!s) return EVENT_TAGS;
-    return EVENT_TAGS.filter((t) => t.toLowerCase().includes(s));
-  }, [tagSearch]);
+    if (!s) return allTags;
+    return allTags.filter((t) => t.toLowerCase().includes(s));
+  }, [tagSearch, allTags]);
 
   /* Client-side month + tag filter */
   const filtered = useMemo(() => {
@@ -207,7 +227,7 @@ export default function EventosPage() {
             onChange={(e) => setZona(e.target.value)}
           >
             <option value="">Zona ⌄</option>
-            {EVENT_ZONAS.map((z) => (
+            {allZones.map((z) => (
               <option key={z} value={z}>
                 {z}
               </option>

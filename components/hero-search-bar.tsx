@@ -11,7 +11,7 @@ export function HeroSearchBar() {
   const handleSearch = () => {
     const q = value.trim();
     if (!q) return;
-    router.push(`/directorio?q=${encodeURIComponent(q)}`);
+    router.push(`/buscar?q=${encodeURIComponent(q)}`);
   };
 
   return (

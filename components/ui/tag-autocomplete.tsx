@@ -19,6 +19,8 @@ interface TagAutocompleteProps {
   maxSuggestions?: number;
   /** Class for outer container */
   className?: string;
+  /** Allow adding custom tags not in availableTags (default true) */
+  allowCreate?: boolean;
 }
 
 export function TagAutocomplete({
@@ -28,6 +30,7 @@ export function TagAutocomplete({
   placeholder = "Escribe para buscar tags...",
   maxSuggestions = 10,
   className,
+  allowCreate = true,
 }: TagAutocompleteProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -67,8 +70,9 @@ export function TagAutocomplete({
   }, [suggestions.length]);
 
   const addTag = (tag: string) => {
-    if (!selectedTags.includes(tag)) {
-      onChange([...selectedTags, tag]);
+    const trimmed = tag.trim();
+    if (trimmed && !selectedTags.includes(trimmed)) {
+      onChange([...selectedTags, trimmed]);
     }
     setQuery("");
     setOpen(false);
@@ -90,11 +94,12 @@ export function TagAutocomplete({
       e.preventDefault();
       if (suggestions[highlightIdx]) {
         addTag(suggestions[highlightIdx]);
+      } else if (allowCreate && query.trim()) {
+        addTag(query.trim());
       }
     } else if (e.key === "Escape") {
       setOpen(false);
     } else if (e.key === "Backspace" && query === "" && selectedTags.length > 0) {
-      // Remove last tag on backspace when input is empty
       removeTag(selectedTags[selectedTags.length - 1]);
     }
   };
@@ -147,7 +152,7 @@ export function TagAutocomplete({
               )}
               onMouseEnter={() => setHighlightIdx(idx)}
               onMouseDown={(e) => {
-                e.preventDefault(); // prevent blur before click
+                e.preventDefault();
                 addTag(tag);
               }}
             >
@@ -157,10 +162,22 @@ export function TagAutocomplete({
         </div>
       )}
 
-      {/* No results message */}
+      {/* Custom creation or No results message */}
       {open && query.trim() && suggestions.length === 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-2 text-sm text-muted-foreground shadow-lg">
-          No hay tags que coincidan
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-2 text-sm shadow-lg">
+          {allowCreate ? (
+            <div
+              className="cursor-pointer font-medium text-[#4c2f92] hover:underline"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                addTag(query.trim());
+              }}
+            >
+              + Agregar &quot;{query.trim()}&quot;
+            </div>
+          ) : (
+            <span className="text-muted-foreground">No hay tags que coincidan</span>
+          )}
         </div>
       )}
     </div>

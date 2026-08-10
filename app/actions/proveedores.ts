@@ -317,8 +317,10 @@ export async function listProvidersPublic(
 
   const q = filters.q?.trim();
   if (q) {
-    // MVP: search in nombre/descripcion
-    query = query.or(`nombre.ilike.%${q}%,descripcion.ilike.%${q}%`);
+    // Search across all text fields
+    query = query.or(
+      `nombre.ilike.%${q}%,descripcion.ilike.%${q}%,zona.ilike.%${q}%,direccion.ilike.%${q}%,telefono.ilike.%${q}%,sitio_web.ilike.%${q}%,instagram.ilike.%${q}%,facebook.ilike.%${q}%`
+    );
   }
 
   // Tags filter (OR): provider must include at least ONE selected tag
@@ -328,6 +330,37 @@ export async function listProvidersPublic(
 
   const { data, error } = await query.order("updated_at", { ascending: false });
   if (error) return { success: false, error: error.message };
-  return { success: true, providers: (data ?? []) as Proveedor[] };
-}
 
+  let results = (data ?? []) as Proveedor[];
+
+  // If text search is active, also include providers matching via tags/categorias arrays.
+  // The Supabase `or()` filter above only covers text columns; array fields need post-filtering.
+  if (q) {
+    const qLower = q.toLowerCase();
+    const { data: allData } = await supabase
+      .from("providers")
+      .select("*")
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false });
+
+    if (allData) {
+      const existingIds = new Set(results.map((p) => p.id));
+      const arrayMatches = (allData as Proveedor[]).filter(
+        (p) =>
+          !existingIds.has(p.id) &&
+          (p.tags?.some((t: string) => t.toLowerCase().includes(qLower)) ||
+            p.categorias?.some((c: string) => c.toLowerCase().includes(qLower)))
+      );
+      // Apply same category/zona/tags filters to array matches
+      const filtered = arrayMatches.filter((p) => {
+        if (filters.categoria && !p.categorias?.includes(filters.categoria)) return false;
+        if (filters.zona && p.zona !== filters.zona) return false;
+        if (filters.tags?.length && !filters.tags.some((t) => p.tags?.includes(t))) return false;
+        return true;
+      });
+      results = [...results, ...filtered];
+    }
+  }
+
+  return { success: true, providers: results };
+}

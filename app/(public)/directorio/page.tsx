@@ -28,6 +28,7 @@ import { listProvidersPublic } from "@/app/actions/proveedores";
 import { getProviderRatingsSummary, getMyRatings, type RatingSummary } from "@/app/actions/ratings";
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
+import { getCategories, getZones, getTags } from "@/app/actions/configuracion";
 import { createClient } from "@/lib/supabase/client";
 import { RatingModal } from "@/components/rating-modal";
 import { LoginModal } from "@/components/login-modal";
@@ -76,11 +77,35 @@ function DirectorioContent() {
     });
   }, []);
 
+  const [allCategories, setAllCategories] = useState<string[]>([...PROVIDER_CATEGORIAS]);
+  const [allZones, setAllZones] = useState<string[]>([...PROVIDER_ZONAS]);
+  const [allTags, setAllTags] = useState<string[]>([...PROVIDER_TAGS]);
+
+  useEffect(() => {
+    async function loadDynamicOptions() {
+      const [catRes, zoneRes, tagRes] = await Promise.all([
+        getCategories("provider"),
+        getZones(),
+        getTags("provider"),
+      ]);
+      if (catRes.success && catRes.categories.length > 0) {
+        setAllCategories(catRes.categories.map((c) => c.nombre));
+      }
+      if (zoneRes.success && zoneRes.zones.length > 0) {
+        setAllZones(zoneRes.zones.map((z) => z.nombre));
+      }
+      if (tagRes.success && tagRes.tags.length > 0) {
+        setAllTags(tagRes.tags.map((t) => t.nombre));
+      }
+    }
+    loadDynamicOptions();
+  }, []);
+
   const filteredTagOptions = useMemo(() => {
     const s = tagSearch.trim().toLowerCase();
-    if (!s) return PROVIDER_TAGS;
-    return PROVIDER_TAGS.filter((t) => t.toLowerCase().includes(s));
-  }, [tagSearch]);
+    if (!s) return allTags;
+    return allTags.filter((t) => t.toLowerCase().includes(s));
+  }, [tagSearch, allTags]);
 
   const fetchRatings = useCallback(async (providerIds: string[]) => {
     if (!providerIds.length) return;
@@ -166,7 +191,7 @@ function DirectorioContent() {
             onChange={(e) => setCategoria(e.target.value)}
           >
             <option value="">Categorías ⌄</option>
-            {PROVIDER_CATEGORIAS.map((c) => (
+            {allCategories.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
@@ -178,7 +203,7 @@ function DirectorioContent() {
             onChange={(e) => setZona(e.target.value)}
           >
             <option value="">Zona ⌄</option>
-            {PROVIDER_ZONAS.map((z) => (
+            {allZones.map((z) => (
               <option key={z} value={z}>
                 {z}
               </option>
@@ -248,24 +273,19 @@ function DirectorioContent() {
 
         {/* Tags browser modal */}
         <Dialog open={tagsModalOpen} onOpenChange={setTagsModalOpen}>
-          <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Tags disponibles</DialogTitle>
+              <DialogTitle>Lista de Tags Disponibles</DialogTitle>
             </DialogHeader>
-            <p className="text-sm text-muted-foreground mb-4">
-              Seleccioná los tags para filtrar proveedores.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {[...PROVIDER_TAGS].sort((a, b) => a.localeCompare(b)).map((t) => {
+            <div className="flex flex-wrap gap-1.5 pt-4">
+              {[...allTags].sort((a, b) => a.localeCompare(b)).map((t) => {
                 const active = selectedTags.includes(t);
                 return (
                   <button
                     key={t}
                     onClick={() => toggleTag(t)}
-                    className={`rounded-full border border-[#2e1b40] px-3 py-1.5 text-xs transition-colors ${
-                      active
-                        ? "bg-[#2e1b40] text-white"
-                        : "bg-white text-[#2e1b40] hover:bg-gray-100"
+                    className={`rounded-full border border-[#2e1b40] px-3 py-1 text-xs transition-colors ${
+                      active ? "bg-[#2e1b40] text-white" : "bg-white text-[#2e1b40] hover:bg-gray-100"
                     }`}
                   >
                     {t}

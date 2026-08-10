@@ -99,7 +99,7 @@ export async function aprobarSolicitud(id: string, adminId: string) {
 
     const nowIso = new Date().toISOString();
     const inviteExpiresAtIso = new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000
+      Date.now() + 300 * 24 * 60 * 60 * 1000
     ).toISOString();
 
     const { error } = await supabase
