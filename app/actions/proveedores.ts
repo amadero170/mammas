@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Proveedor } from "@/lib/types";
+import { syncTagsToCatalog } from "@/app/actions/configuracion";
 
 export type ProviderUpsertInput = {
   id?: string;
@@ -95,6 +96,7 @@ export async function upsertProvider(
 
     const { error } = await supabase.from("providers").insert(payload);
     if (error) return { success: false, error: error.message };
+    if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "provider");
     return { success: true };
   }
 
@@ -120,6 +122,7 @@ export async function upsertProvider(
     .eq("id", input.id);
 
   if (error) return { success: false, error: error.message };
+  if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "provider");
   return { success: true };
 }
 
@@ -224,6 +227,7 @@ export async function createProviderAsMamma(
 
   const { error } = await supabase.from("providers").insert(payload);
   if (error) return { success: false, error: error.message };
+  if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "provider");
   return { success: true };
 }
 
@@ -277,6 +281,7 @@ export async function updateMyProvider(
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };
+  if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "provider");
   return { success: true };
 }
 export type ProvidersPublicFilters = {

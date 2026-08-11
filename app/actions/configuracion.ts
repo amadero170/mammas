@@ -57,6 +57,22 @@ export async function getTags(tipo?: "provider" | "event"): Promise<{
 }> {
   try {
     const supabase = await createClient();
+
+    // Auto-sync any existing tags from providers & events into master catalog table
+    try {
+      const adminSupabase = createAdminClient();
+      const { data: pData } = await adminSupabase.from("providers").select("tags");
+      const { data: eData } = await adminSupabase.from("events").select("tags");
+
+      const pTags = pData?.flatMap((p) => p.tags || []) || [];
+      const eTags = eData?.flatMap((e) => e.tags || []) || [];
+
+      if (pTags.length) await syncTagsToCatalog(pTags, "provider");
+      if (eTags.length) await syncTagsToCatalog(eTags, "event");
+    } catch (e) {
+      console.error("Auto-sync tags error:", e);
+    }
+
     let query = supabase.from("tags").select("*").order("nombre", { ascending: true });
     if (tipo) {
       query = query.eq("tipo", tipo);
@@ -92,12 +108,70 @@ export async function createTag(
   return { success: true };
 }
 
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export async function syncTagsToCatalog(
+  tags: string[] | null | undefined,
+  tipo: "provider" | "event" = "provider"
+) {
+  if (!tags || !tags.length) return;
+  try {
+    const adminSupabase = createAdminClient();
+    const cleanTags = Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean)));
+    if (!cleanTags.length) return;
+
+    const records = cleanTags.map((nombre) => ({ nombre, tipo }));
+    await adminSupabase
+      .from("tags")
+      .upsert(records, { onConflict: "nombre,tipo", ignoreDuplicates: true });
+  } catch (err) {
+    console.error("Error syncing tags to catalog:", err);
+  }
+}
+
 export async function deleteTag(id: string): Promise<{ success: boolean; error?: string }> {
   const { ok, supabase } = await assertAdmin();
   if (!ok) return { success: false, error: "No autorizado" };
 
+  const adminSupabase = createAdminClient();
+
+  // Fetch tag details before deleting
+  const { data: tag } = await supabase.from("tags").select("nombre, tipo").eq("id", id).single();
+
   const { error } = await supabase.from("tags").delete().eq("id", id);
   if (error) return { success: false, error: error.message };
+
+  // Cascade cleanup from providers and events
+  if (tag?.nombre) {
+    const tagNombre = tag.nombre;
+
+    // Cascade remove tag from providers
+    const { data: providers } = await adminSupabase
+      .from("providers")
+      .select("id, tags")
+      .contains("tags", [tagNombre]);
+
+    if (providers?.length) {
+      for (const p of providers) {
+        const updatedTags = (p.tags || []).filter((t: string) => t !== tagNombre);
+        await adminSupabase.from("providers").update({ tags: updatedTags }).eq("id", p.id);
+      }
+    }
+
+    // Cascade remove tag from events
+    const { data: events } = await adminSupabase
+      .from("events")
+      .select("id, tags")
+      .contains("tags", [tagNombre]);
+
+    if (events?.length) {
+      for (const e of events) {
+        const updatedTags = (e.tags || []).filter((t: string) => t !== tagNombre);
+        await adminSupabase.from("events").update({ tags: updatedTags }).eq("id", e.id);
+      }
+    }
+  }
+
   return { success: true };
 }
 
@@ -154,8 +228,36 @@ export async function deleteCategory(id: string): Promise<{ success: boolean; er
   const { ok, supabase } = await assertAdmin();
   if (!ok) return { success: false, error: "No autorizado" };
 
+  const adminSupabase = createAdminClient();
+
+  const { data: cat } = await supabase.from("categories").select("nombre, tipo").eq("id", id).single();
+
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) return { success: false, error: error.message };
+
+  if (cat?.nombre) {
+    const catNombre = cat.nombre;
+
+    // Remove from providers categories array
+    const { data: providers } = await adminSupabase
+      .from("providers")
+      .select("id, categorias")
+      .contains("categorias", [catNombre]);
+
+    if (providers?.length) {
+      for (const p of providers) {
+        const updated = (p.categorias || []).filter((c: string) => c !== catNombre);
+        await adminSupabase.from("providers").update({ categorias: updated }).eq("id", p.id);
+      }
+    }
+
+    // Reset from events category field if matched
+    await adminSupabase
+      .from("events")
+      .update({ categoria: null })
+      .eq("categoria", catNombre);
+  }
+
   return { success: true };
 }
 
@@ -200,7 +302,18 @@ export async function deleteZone(id: string): Promise<{ success: boolean; error?
   const { ok, supabase } = await assertAdmin();
   if (!ok) return { success: false, error: "No autorizado" };
 
+  const adminSupabase = createAdminClient();
+
+  const { data: zone } = await supabase.from("zones").select("nombre").eq("id", id).single();
+
   const { error } = await supabase.from("zones").delete().eq("id", id);
   if (error) return { success: false, error: error.message };
+
+  if (zone?.nombre) {
+    const zoneNombre = zone.nombre;
+    await adminSupabase.from("providers").update({ zona: null }).eq("zona", zoneNombre);
+    await adminSupabase.from("events").update({ zona: null }).eq("zona", zoneNombre);
+  }
+
   return { success: true };
 }

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Evento } from "@/lib/types";
+import { syncTagsToCatalog } from "@/app/actions/configuracion";
 
 export type EventUpsertInput = {
   id?: string;
@@ -22,6 +23,7 @@ export type EventUpsertInput = {
   telefono?: string | null;
   precios?: string | null;
   zona?: string | null;
+  tags?: string[] | null;
 };
 
 export type EventsPublicFilters = {
@@ -125,12 +127,14 @@ export async function upsertEvent(
       telefono: input.telefono || null,
       precios: input.precios || null,
       zona: input.zona || null,
+      tags: input.tags || [],
       estado: "draft" as const,
       creado_por: user!.id,
     };
 
     const { error } = await adminSupabase.from("events").insert(payload);
     if (error) return { success: false, error: error.message };
+    if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "event");
     return { success: true };
   }
 
@@ -152,6 +156,7 @@ export async function upsertEvent(
     telefono: input.telefono || null,
     precios: input.precios || null,
     zona: input.zona || null,
+    tags: input.tags || [],
   };
 
   const { error } = await adminSupabase
@@ -160,6 +165,7 @@ export async function upsertEvent(
     .eq("id", input.id);
 
   if (error) return { success: false, error: error.message };
+  if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "event");
   return { success: true };
 }
 
@@ -287,12 +293,14 @@ export async function createEventAsMamma(
     telefono: input.telefono || null,
     precios: input.precios || null,
     zona: input.zona || null,
+    tags: input.tags || [],
     estado: "draft" as const,
     creado_por: user.id,
   };
 
   const { error } = await adminSupabase.from("events").insert(payload);
   if (error) return { success: false, error: error.message };
+  if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "event");
   return { success: true };
 }
 
@@ -343,6 +351,7 @@ export async function updateMyEvent(
     telefono: input.telefono || null,
     precios: input.precios || null,
     zona: input.zona || null,
+    tags: input.tags || [],
   };
 
   const { error } = await adminSupabase
@@ -351,6 +360,7 @@ export async function updateMyEvent(
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };
+  if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "event");
   return { success: true };
 }
 
