@@ -22,6 +22,7 @@ import {
   type CategoryItem,
   type ZoneItem,
 } from "@/app/actions/configuracion";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 export default function ConfiguracionAdminPage() {
   const [activeTab, setActiveTab] = useState("tags");
@@ -94,15 +95,35 @@ export default function ConfiguracionAdminPage() {
     }
   };
 
-  const handleDeleteTag = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar el tag "${nombre}"?`)) return;
-    const res = await deleteTag(id);
-    if (res.success) {
-      toast.success(`Tag "${nombre}" eliminado`);
-      loadTags();
-    } else {
-      toast.error("No se pudo eliminar", { description: res.error });
-    }
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => Promise<void>;
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    action: async () => {},
+  });
+
+  const handleDeleteTag = (id: string, nombre: string) => {
+    setConfirmModal({
+      open: true,
+      title: "Eliminar tag",
+      description: `¿Seguro que deseas eliminar el tag "${nombre}"?`,
+      action: async () => {
+        const res = await deleteTag(id);
+        if (res.success) {
+          toast.success(`Tag "${nombre}" eliminado`);
+          loadTags();
+        } else {
+          toast.error("No se pudo eliminar", { description: res.error });
+        }
+        setConfirmModal((c) => ({ ...c, open: false }));
+      },
+    });
   };
 
   // ── Categories Handlers ──
@@ -122,15 +143,22 @@ export default function ConfiguracionAdminPage() {
     }
   };
 
-  const handleDeleteCategory = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar la categoría "${nombre}"?`)) return;
-    const res = await deleteCategory(id);
-    if (res.success) {
-      toast.success(`Categoría "${nombre}" eliminada`);
-      loadCategories();
-    } else {
-      toast.error("No se pudo eliminar", { description: res.error });
-    }
+  const handleDeleteCategory = (id: string, nombre: string) => {
+    setConfirmModal({
+      open: true,
+      title: "Eliminar categoría",
+      description: `¿Seguro que deseas eliminar la categoría "${nombre}"?`,
+      action: async () => {
+        const res = await deleteCategory(id);
+        if (res.success) {
+          toast.success(`Categoría "${nombre}" eliminada`);
+          loadCategories();
+        } else {
+          toast.error("No se pudo eliminar", { description: res.error });
+        }
+        setConfirmModal((c) => ({ ...c, open: false }));
+      },
+    });
   };
 
   // ── Zones Handlers ──
@@ -147,15 +175,22 @@ export default function ConfiguracionAdminPage() {
     }
   };
 
-  const handleDeleteZone = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar la zona "${nombre}"?`)) return;
-    const res = await deleteZone(id);
-    if (res.success) {
-      toast.success(`Zona "${nombre}" eliminada`);
-      loadZones();
-    } else {
-      toast.error("No se pudo eliminar", { description: res.error });
-    }
+  const handleDeleteZone = (id: string, nombre: string) => {
+    setConfirmModal({
+      open: true,
+      title: "Eliminar zona",
+      description: `¿Seguro que deseas eliminar la zona "${nombre}"?`,
+      action: async () => {
+        const res = await deleteZone(id);
+        if (res.success) {
+          toast.success(`Zona "${nombre}" eliminada`);
+          loadZones();
+        } else {
+          toast.error("No se pudo eliminar", { description: res.error });
+        }
+        setConfirmModal((c) => ({ ...c, open: false }));
+      },
+    });
   };
 
   // Filtered lists
@@ -444,6 +479,16 @@ export default function ConfiguracionAdminPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Confirm Action Modal */}
+      <ConfirmActionModal
+        open={confirmModal.open}
+        onOpenChange={(open) => setConfirmModal((c) => ({ ...c, open }))}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        variant="destructive"
+        onConfirm={confirmModal.action}
+      />
     </div>
   );
 }

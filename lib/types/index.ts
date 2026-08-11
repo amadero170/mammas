@@ -71,7 +71,7 @@ export interface CreateSolicitudData {
   mensaje?: string;
 }
 
-export type EstadoEvento = "draft" | "publicado";
+export type EstadoEvento = "draft" | "publicado" | "archivado";
 
 export interface Evento {
   id: string;

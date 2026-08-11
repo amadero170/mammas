@@ -125,17 +125,41 @@ export async function upsertProvider(
 
 export async function toggleProviderActive(
   id: string,
-  isActive: boolean
+  nextState: boolean | "active" | "inactive" | "archivado"
 ): Promise<{ success: true } | { success: false; error: string }> {
   const { ok, supabase } = await assertAdmin();
   if (!ok) return { success: false, error: "No autorizado" };
 
+  let is_active = false;
+  let estado = "inactive";
+
+  if (nextState === true || nextState === "active") {
+    is_active = true;
+    estado = "active";
+  } else if (nextState === "archivado") {
+    is_active = false;
+    estado = "archivado";
+  } else {
+    is_active = false;
+    estado = "inactive";
+  }
+
   const { error } = await supabase
     .from("providers")
-    .update({ is_active: isActive })
+    .update({ is_active, estado })
     .eq("id", id);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    // Fallback if DB check constraint does not yet allow 'archivado'
+    if (nextState === "archivado") {
+      const { error: fallbackErr } = await supabase
+        .from("providers")
+        .update({ is_active: false })
+        .eq("id", id);
+      if (!fallbackErr) return { success: true };
+    }
+    return { success: false, error: error.message };
+  }
   return { success: true };
 }
 

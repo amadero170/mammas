@@ -164,6 +164,7 @@ export function Navbar() {
   const isLightTheme =
     pathname === "/directorio" ||
     pathname === "/eventos" ||
+    pathname?.startsWith("/buscar") ||
     pathname?.startsWith("/dashboard") ||
     pathname?.startsWith("/admin") ||
     pathname === "/solicitar-acceso" ||
@@ -345,11 +346,11 @@ export function Navbar() {
               <Menu className="h-6 w-6" />
             </button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-            <SheetHeader className="border-b pb-4">
+          <SheetContent side="right" className="w-[300px] sm:w-[400px] flex flex-col max-h-screen overflow-y-auto">
+            <SheetHeader className="border-b pb-4 shrink-0">
               <SheetTitle className="text-2xl font-bold">Menú</SheetTitle>
             </SheetHeader>
-            <div className="mt-6 flex flex-col gap-2">
+            <div className="mt-6 flex flex-col gap-2 pb-10">
               {/* Mobile Navigation Links */}
               {navLinks.map((link) => (
                 <Link

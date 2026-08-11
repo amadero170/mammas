@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, FileEdit, Flag, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +14,15 @@ import { EVENT_ZONAS } from "@/lib/constants/events";
 import { EVENT_TAGS } from "@/lib/constants/event-tags";
 import { getCategories, getZones, getTags } from "@/app/actions/configuracion";
 import { createClient } from "@/lib/supabase/client";
+import { LoginModal } from "@/components/login-modal";
+import { SuggestChangeModal } from "@/components/suggest-change-modal";
+import { ReportModal } from "@/components/report-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /* ── Date helpers ── */
 const DAY_NAMES = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
@@ -93,6 +102,9 @@ export default function EventosPage() {
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<Evento[]>([]);
   const [user, setUser] = useState<{ id: string } | null>(null);
+  const [suggestTarget, setSuggestTarget] = useState<Evento | null>(null);
+  const [reportTarget, setReportTarget] = useState<Evento | null>(null);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data }) => setUser(data.user));
@@ -371,10 +383,54 @@ export default function EventosPage() {
                           </div>
                         )}
 
-                        {/* Title */}
-                        <h3 className="mt-3 text-lg font-bold leading-snug text-[#2e1b40]">
-                          {evt.titulo}
-                        </h3>
+                        {/* Title & 3-dots menu */}
+                        <div className="mt-3 flex items-start justify-between gap-2">
+                          <h3 className="text-lg font-bold leading-snug text-[#2e1b40]">
+                            {evt.titulo}
+                          </h3>
+
+                          {/* 3-dots Menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 rounded-full text-gray-500 hover:text-[#4c2f92] hover:bg-purple-50 shrink-0"
+                                title="Opciones"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (!user) {
+                                    setLoginModalOpen(true);
+                                    return;
+                                  }
+                                  setSuggestTarget(evt);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <FileEdit className="mr-2 h-4 w-4 text-[#4c2f92]" />
+                                Sugerir cambio
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (!user) {
+                                    setLoginModalOpen(true);
+                                    return;
+                                  }
+                                  setReportTarget(evt);
+                                }}
+                                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                              >
+                                <Flag className="mr-2 h-4 w-4" />
+                                Reportar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
 
                         {/* Description */}
                         <p className="mt-1 text-sm leading-relaxed text-[#2e1b40]/70">
@@ -424,7 +480,35 @@ export default function EventosPage() {
         )}
       </div>
 
+      {/* Suggest Change Modal */}
+      {suggestTarget && (
+        <SuggestChangeModal
+          open={!!suggestTarget}
+          onOpenChange={(open) => {
+            if (!open) setSuggestTarget(null);
+          }}
+          targetType="event"
+          targetItem={suggestTarget}
+        />
+      )}
 
+      {/* Report Modal */}
+      {reportTarget && (
+        <ReportModal
+          open={!!reportTarget}
+          onOpenChange={(open) => {
+            if (!open) setReportTarget(null);
+          }}
+          targetType="event"
+          targetItem={reportTarget}
+        />
+      )}
+
+      {/* Login Modal */}
+      <LoginModal
+        open={loginModalOpen}
+        onOpenChange={setLoginModalOpen}
+      />
     </div>
   );
 }

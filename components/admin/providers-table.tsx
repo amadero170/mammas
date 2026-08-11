@@ -72,21 +72,36 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
     return map;
   }, [providers, activeProviders]);
 
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "archived">("all");
+
   const stats = useMemo(() => {
     const total = providers.length;
-    const active = providers.filter((p) => p.is_active).length;
-    return { total, active };
+    const active = providers.filter((p) => p.is_active && (p as any).estado !== "archivado").length;
+    const inactive = providers.filter((p) => !p.is_active && (p as any).estado !== "archivado").length;
+    const archived = providers.filter((p) => (p as any).estado === "archivado").length;
+    return { total, active, inactive, archived };
   }, [providers]);
 
-  const onToggle = async (id: string, next: boolean) => {
+  const filteredProviders = useMemo(() => {
+    if (statusFilter === "active") return providers.filter((p) => p.is_active && (p as any).estado !== "archivado");
+    if (statusFilter === "inactive") return providers.filter((p) => !p.is_active && (p as any).estado !== "archivado");
+    if (statusFilter === "archived") return providers.filter((p) => (p as any).estado === "archivado");
+    return providers;
+  }, [providers, statusFilter]);
+
+  const onToggleState = async (id: string, nextState: "active" | "inactive" | "archivado") => {
     setLoadingId(id);
     try {
-      const res = await toggleProviderActive(id, next);
+      const res = await toggleProviderActive(id, nextState);
       if (!res.success) {
         toast.error("No se pudo actualizar", { description: res.error });
         return;
       }
-      toast.success(next ? "Proveedor activado" : "Proveedor desactivado");
+      let msg = "Proveedor actualizado";
+      if (nextState === "active") msg = "Proveedor activado";
+      if (nextState === "inactive") msg = "Proveedor desactivado";
+      if (nextState === "archivado") msg = "Proveedor archivado";
+      toast.success(msg);
       window.location.reload();
     } catch {
       toast.error("Error inesperado");
@@ -104,16 +119,49 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
         matches,
       });
     } else {
-      onToggle(p.id, true);
+      onToggleState(p.id, "active");
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm text-muted-foreground">
-          {stats.total} proveedores · {stats.active} activos
+        {/* Status filter buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={statusFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("all")}
+            className={statusFilter === "all" ? "bg-[#4c2f92]" : ""}
+          >
+            Todos ({stats.total})
+          </Button>
+          <Button
+            variant={statusFilter === "active" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("active")}
+            className={statusFilter === "active" ? "bg-[#4c2f92]" : ""}
+          >
+            Activos ({stats.active})
+          </Button>
+          <Button
+            variant={statusFilter === "inactive" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("inactive")}
+            className={statusFilter === "inactive" ? "bg-[#4c2f92]" : ""}
+          >
+            Inactivos ({stats.inactive})
+          </Button>
+          <Button
+            variant={statusFilter === "archived" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter("archived")}
+            className={statusFilter === "archived" ? "bg-[#4c2f92]" : ""}
+          >
+            Archivados ({stats.archived})
+          </Button>
         </div>
+
         <Button onClick={() => setDialog({ open: true, provider: null })}>
           Nuevo proveedor
         </Button>
@@ -133,89 +181,142 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {providers.map((p) => {
-              const creator = p.creado_por ? usersMap[p.creado_por] : null;
-              const matches = duplicatesMap[p.id];
-              const hasDuplicates = matches && matches.length > 0;
+            {filteredProviders.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                  No se encontraron proveedores para este filtro.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredProviders.map((p) => {
+                const creator = p.creado_por ? usersMap[p.creado_por] : null;
+                const matches = duplicatesMap[p.id];
+                const hasDuplicates = matches && matches.length > 0;
+                const isArchived = (p as any).estado === "archivado";
 
-              return (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex flex-col gap-1">
-                      <span>{p.nombre}</span>
-                      {hasDuplicates && (
-                        <div
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded w-fit cursor-pointer hover:bg-amber-100 transition-colors"
-                          onClick={() => setConfirmModal({ open: true, provider: p, matches })}
-                          title="Clic para ver coincidencia"
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col gap-1">
+                        <span>{p.nombre}</span>
+                        {hasDuplicates && (
+                          <div
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded w-fit cursor-pointer hover:bg-amber-100 transition-colors"
+                            onClick={() => setConfirmModal({ open: true, provider: p, matches })}
+                            title="Clic para ver coincidencia"
+                          >
+                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                            <span>Posible duplicado ({matches.length})</span>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {p.categorias?.length ? p.categorias.join(" - ") : "-"}
+                    </TableCell>
+                    <TableCell>{p.zona || "-"}</TableCell>
+                    <TableCell>
+                      {creator ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUser(creator)}
+                          className="text-left font-medium text-primary hover:underline hover:text-primary/80 transition-colors inline-flex items-center gap-1.5"
                         >
-                          <AlertTriangle className="h-3 w-3 shrink-0" />
-                          <span>Posible duplicado ({matches.length})</span>
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {p.categorias?.length ? p.categorias.join(" - ") : "-"}
-                  </TableCell>
-                  <TableCell>{p.zona || "-"}</TableCell>
-                  <TableCell>
-                    {creator ? (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedUser(creator)}
-                        className="text-left font-medium text-primary hover:underline hover:text-primary/80 transition-colors inline-flex items-center gap-1.5"
-                      >
-                        <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{creator.nombre}</span>
-                      </button>
-                    ) : (
-                      <span className="text-muted-foreground text-xs font-mono">
-                        {p.creado_por ? `${p.creado_por.slice(0, 8)}...` : "-"}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {p.is_active ? (
-                      <Badge variant="default">Activo</Badge>
-                    ) : (
-                      <Badge variant="outline">Inactivo</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{formatDate(p.updated_at)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDialog({ open: true, provider: p })}
-                      >
-                        Editar
-                      </Button>
-                      {p.is_active ? (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={loadingId === p.id}
-                          onClick={() => onToggle(p.id, false)}
-                        >
-                          Desactivar
-                        </Button>
+                          <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>{creator.nombre}</span>
+                        </button>
                       ) : (
-                        <Button
-                          size="sm"
-                          disabled={loadingId === p.id}
-                          className={hasDuplicates ? "border border-amber-500 bg-amber-600 hover:bg-amber-700 text-white" : ""}
-                          onClick={() => handleActivateClick(p)}
-                        >
-                          Activar
-                        </Button>
+                        <span className="text-muted-foreground text-xs font-mono">
+                          {p.creado_por ? `${p.creado_por.slice(0, 8)}...` : "-"}
+                        </span>
                       )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                    </TableCell>
+                    <TableCell>
+                      {isArchived ? (
+                        <Badge variant="outline" className="text-gray-500 border-gray-400 bg-gray-50">
+                          Archivado
+                        </Badge>
+                      ) : p.is_active ? (
+                        <Badge variant="default">Activo</Badge>
+                      ) : (
+                        <Badge variant="outline">Inactivo</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>{formatDate(p.updated_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDialog({ open: true, provider: p })}
+                        >
+                          Editar
+                        </Button>
+                        {isArchived ? (
+                          <>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={loadingId === p.id}
+                              onClick={() => onToggleState(p.id, "inactive")}
+                            >
+                              Restaurar
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={loadingId === p.id}
+                              onClick={() => handleActivateClick(p)}
+                            >
+                              Activar
+                            </Button>
+                          </>
+                        ) : p.is_active ? (
+                          <>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={loadingId === p.id}
+                              onClick={() => onToggleState(p.id, "inactive")}
+                            >
+                              Desactivar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              disabled={loadingId === p.id}
+                              onClick={() => onToggleState(p.id, "archivado")}
+                            >
+                              Archivar
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              disabled={loadingId === p.id}
+                              className={hasDuplicates ? "border border-amber-500 bg-amber-600 hover:bg-amber-700 text-white" : ""}
+                              onClick={() => handleActivateClick(p)}
+                            >
+                              Activar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              disabled={loadingId === p.id}
+                              onClick={() => onToggleState(p.id, "archivado")}
+                            >
+                              Archivar
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>
@@ -243,7 +344,7 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
           matches={confirmModal.matches}
           onConfirm={() => {
             if (confirmModal.provider) {
-              onToggle(confirmModal.provider.id, true);
+              onToggleState(confirmModal.provider.id, "active");
             }
           }}
         />

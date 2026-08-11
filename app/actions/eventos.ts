@@ -165,7 +165,7 @@ export async function upsertEvent(
 
 export async function toggleEventEstado(
   id: string,
-  estado: "draft" | "publicado"
+  estado: "draft" | "publicado" | "archivado"
 ): Promise<{ success: true } | { success: false; error: string }> {
   const { ok, adminSupabase } = await assertAdmin();
   if (!ok) return { success: false, error: "No autorizado" };

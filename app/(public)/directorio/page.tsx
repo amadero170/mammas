@@ -5,7 +5,15 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Globe, Facebook, Instagram, MapPin, Star, RefreshCw } from "lucide-react";
+import { Globe, Facebook, Instagram, MapPin, Star, RefreshCw, FileEdit, Flag, MoreVertical } from "lucide-react";
+import { SuggestChangeModal } from "@/components/suggest-change-modal";
+import { ReportModal } from "@/components/report-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +114,9 @@ function DirectorioContent() {
     if (!s) return allTags;
     return allTags.filter((t) => t.toLowerCase().includes(s));
   }, [tagSearch, allTags]);
+
+  const [suggestTarget, setSuggestTarget] = useState<Proveedor | null>(null);
+  const [reportTarget, setReportTarget] = useState<Proveedor | null>(null);
 
   const fetchRatings = useCallback(async (providerIds: string[]) => {
     if (!providerIds.length) return;
@@ -331,52 +342,96 @@ function DirectorioContent() {
                 className="relative flex flex-col rounded-none border border-gray-300 bg-white p-6 shadow-sm"
               >
                 {/* Header */}
-                <div className="flex items-start gap-4">
-                  <div className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 overflow-hidden relative">
-                    {p.logo_url ? (
-                      <Image 
-                        src={p.logo_url} 
-                        alt={p.nombre} 
-                        fill
-                        className="object-cover"
-                        sizes="72px"
-                      />
-                    ) : (
-                      <span className="font-aller text-2xl font-bold text-[#4c2f92]">
-                        {p.nombre.charAt(0)}
-                      </span>
-                    )}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 overflow-hidden relative">
+                      {p.logo_url ? (
+                        <Image 
+                          src={p.logo_url} 
+                          alt={p.nombre} 
+                          fill
+                          className="object-cover"
+                          sizes="72px"
+                        />
+                      ) : (
+                        <span className="font-aller text-2xl font-bold text-[#4c2f92]">
+                          {p.nombre.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-aller text-xl font-bold leading-tight text-[#4c2f92]">
+                        {p.nombre}
+                      </h3>
+                      <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground">
+                        {(p.categorias?.length ? p.categorias.join(" - ") : "Categoría")} / {p.zona || "Zona"}
+                      </p>
+                      {(() => {
+                        const summary = ratingsSummary[p.id];
+                        const avg = summary?.avg_rating ?? 0;
+                        const total = summary?.total_ratings ?? 0;
+                        return (
+                          <div className="mt-2 flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  i <= Math.round(avg)
+                                    ? "fill-[#e5f34a] text-[#e5f34a]"
+                                    : "fill-gray-300 text-gray-300"
+                                }`}
+                              />
+                            ))}
+                            <span className="ml-2 text-xs font-bold text-gray-600">
+                              {total > 0 ? `${avg} (${total})` : "Sin calificaciones"}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-aller text-xl font-bold leading-tight text-[#4c2f92]">
-                      {p.nombre}
-                    </h3>
-                    <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground">
-                      {(p.categorias?.length ? p.categorias.join(" - ") : "Categoría")} / {p.zona || "Zona"}
-                    </p>
-                    {(() => {
-                      const summary = ratingsSummary[p.id];
-                      const avg = summary?.avg_rating ?? 0;
-                      const total = summary?.total_ratings ?? 0;
-                      return (
-                        <div className="mt-2 flex items-center gap-0.5">
-                          {[1, 2, 3, 4, 5].map((i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${
-                                i <= Math.round(avg)
-                                  ? "fill-[#e5f34a] text-[#e5f34a]"
-                                  : "fill-gray-300 text-gray-300"
-                              }`}
-                            />
-                          ))}
-                          <span className="ml-2 text-xs font-bold text-gray-600">
-                            {total > 0 ? `${avg} (${total})` : "Sin calificaciones"}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
+
+                  {/* 3-dots Menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full text-gray-500 hover:text-[#4c2f92] hover:bg-purple-50 shrink-0"
+                        title="Opciones"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (!user) {
+                            setLoginModalOpen(true);
+                            return;
+                          }
+                          setSuggestTarget(p);
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <FileEdit className="mr-2 h-4 w-4 text-[#4c2f92]" />
+                        Sugerir cambio
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (!user) {
+                            setLoginModalOpen(true);
+                            return;
+                          }
+                          setReportTarget(p);
+                        }}
+                        className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                      >
+                        <Flag className="mr-2 h-4 w-4" />
+                        Reportar
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
 
@@ -515,6 +570,30 @@ function DirectorioContent() {
           </div>
         )}
       </div>
+
+      {/* Suggest Change Modal */}
+      {suggestTarget && (
+        <SuggestChangeModal
+          open={!!suggestTarget}
+          onOpenChange={(open) => {
+            if (!open) setSuggestTarget(null);
+          }}
+          targetType="provider"
+          targetItem={suggestTarget}
+        />
+      )}
+
+      {/* Report Modal */}
+      {reportTarget && (
+        <ReportModal
+          open={!!reportTarget}
+          onOpenChange={(open) => {
+            if (!open) setReportTarget(null);
+          }}
+          targetType="provider"
+          targetItem={reportTarget}
+        />
+      )}
 
       {/* Rating Modal */}
       {ratingTarget && (
