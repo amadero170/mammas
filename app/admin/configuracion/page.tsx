@@ -323,19 +323,16 @@ export default function ConfiguracionAdminPage() {
               onChange={(e) => setNewCatName(e.target.value)}
               className="w-full sm:w-64"
             />
-            <Input
-              placeholder="Icono (emoji o url opcional)..."
-              value={newCatIcon}
-              onChange={(e) => setNewCatIcon(e.target.value)}
-              className="w-full sm:w-48"
-            />
-            <Input
-              type="number"
-              placeholder="Orden"
-              value={newCatOrden}
-              onChange={(e) => setNewCatOrden(e.target.value)}
-              className="w-24"
-            />
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Orden:</span>
+              <Input
+                type="number"
+                placeholder="0"
+                value={newCatOrden}
+                onChange={(e) => setNewCatOrden(e.target.value)}
+                className="w-20"
+              />
+            </div>
             <Button type="submit" className="bg-[#4c2f92] hover:bg-[#3d2575]">
               <Plus className="mr-2 h-4 w-4" /> Crear Categoría
             </Button>
@@ -353,7 +350,6 @@ export default function ConfiguracionAdminPage() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-muted/50 text-xs uppercase text-muted-foreground border-b">
                   <tr>
-                    <th className="px-4 py-3">Icono</th>
                     <th className="px-4 py-3">Nombre</th>
                     <th className="px-4 py-3">Orden</th>
                     <th className="px-4 py-3 text-right">Acción</th>
@@ -362,7 +358,6 @@ export default function ConfiguracionAdminPage() {
                 <tbody className="divide-y">
                   {filteredCategories.map((cat) => (
                     <tr key={cat.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 text-lg">{cat.icono || "—"}</td>
                       <td className="px-4 py-3 font-semibold text-foreground">{cat.nombre}</td>
                       <td className="px-4 py-3 text-muted-foreground">{cat.orden ?? 0}</td>
                       <td className="px-4 py-3 text-right">

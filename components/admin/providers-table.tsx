@@ -16,7 +16,9 @@ import type { Proveedor, UserDetail } from "@/lib/types";
 import { toggleProviderActive } from "@/app/actions/proveedores";
 import { ProviderFormDialog } from "@/components/admin/provider-form-dialog";
 import { UserDetailModal } from "@/components/admin/user-detail-modal";
-import { User as UserIcon } from "lucide-react";
+import { DuplicateConfirmModal } from "@/components/admin/duplicate-confirm-modal";
+import { findProviderDuplicates, type DuplicateMatch } from "@/lib/duplicate-checker";
+import { User as UserIcon, AlertTriangle } from "lucide-react";
 
 type Props = {
   providers: Proveedor[];
@@ -32,13 +34,6 @@ function formatDate(dateString: string) {
 }
 
 export function ProvidersTable({ providers, usersMap = {} }: Props) {
-  console.log("[ADMIN/PROVEEDORES] ProvidersTable render", {
-    count: providers?.length ?? 0,
-    first: providers?.[0]
-      ? { id: providers[0].id, nombre: providers[0].nombre }
-      : null,
-  });
-
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [dialog, setDialog] = useState<{
@@ -48,6 +43,34 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
     open: false,
     provider: null,
   });
+
+  // Duplicate confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    provider: Proveedor | null;
+    matches: DuplicateMatch<Proveedor>[];
+  }>({
+    open: false,
+    provider: null,
+    matches: [],
+  });
+
+  const activeProviders = useMemo(
+    () => providers.filter((p) => p.is_active),
+    [providers]
+  );
+
+  // Pre-calculate duplicates for inactive providers
+  const duplicatesMap = useMemo(() => {
+    const map: Record<string, DuplicateMatch<Proveedor>[]> = {};
+    for (const p of providers) {
+      if (!p.is_active) {
+        const matches = findProviderDuplicates(p, activeProviders);
+        if (matches.length > 0) map[p.id] = matches;
+      }
+    }
+    return map;
+  }, [providers, activeProviders]);
 
   const stats = useMemo(() => {
     const total = providers.length;
@@ -69,6 +92,19 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
       toast.error("Error inesperado");
     } finally {
       setLoadingId(null);
+    }
+  };
+
+  const handleActivateClick = (p: Proveedor) => {
+    const matches = duplicatesMap[p.id];
+    if (matches && matches.length > 0) {
+      setConfirmModal({
+        open: true,
+        provider: p,
+        matches,
+      });
+    } else {
+      onToggle(p.id, true);
     }
   };
 
@@ -99,9 +135,26 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
           <TableBody>
             {providers.map((p) => {
               const creator = p.creado_por ? usersMap[p.creado_por] : null;
+              const matches = duplicatesMap[p.id];
+              const hasDuplicates = matches && matches.length > 0;
+
               return (
                 <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.nombre}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col gap-1">
+                      <span>{p.nombre}</span>
+                      {hasDuplicates && (
+                        <div
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded w-fit cursor-pointer hover:bg-amber-100 transition-colors"
+                          onClick={() => setConfirmModal({ open: true, provider: p, matches })}
+                          title="Clic para ver coincidencia"
+                        >
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          <span>Posible duplicado ({matches.length})</span>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {p.categorias?.length ? p.categorias.join(" - ") : "-"}
                   </TableCell>
@@ -152,7 +205,8 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
                         <Button
                           size="sm"
                           disabled={loadingId === p.id}
-                          onClick={() => onToggle(p.id, true)}
+                          className={hasDuplicates ? "border border-amber-500 bg-amber-600 hover:bg-amber-700 text-white" : ""}
+                          onClick={() => handleActivateClick(p)}
                         >
                           Activar
                         </Button>
@@ -179,6 +233,21 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
         }}
         user={selectedUser}
       />
+
+      {confirmModal.provider && (
+        <DuplicateConfirmModal
+          open={confirmModal.open}
+          onOpenChange={(open) => setConfirmModal((m) => ({ ...m, open }))}
+          targetName={confirmModal.provider.nombre}
+          targetType="proveedor"
+          matches={confirmModal.matches}
+          onConfirm={() => {
+            if (confirmModal.provider) {
+              onToggle(confirmModal.provider.id, true);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

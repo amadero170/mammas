@@ -16,7 +16,9 @@ import type { Evento, UserDetail } from "@/lib/types";
 import { toggleEventEstado } from "@/app/actions/eventos";
 import { EventFormDialog } from "@/components/admin/event-form-dialog";
 import { UserDetailModal } from "@/components/admin/user-detail-modal";
-import { User as UserIcon } from "lucide-react";
+import { DuplicateConfirmModal } from "@/components/admin/duplicate-confirm-modal";
+import { findEventDuplicates, type DuplicateMatch } from "@/lib/duplicate-checker";
+import { User as UserIcon, AlertTriangle } from "lucide-react";
 
 type Props = {
   events: Evento[];
@@ -42,6 +44,32 @@ export function EventsTable({ events, usersMap = {} }: Props) {
     event: null,
   });
 
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    event: Evento | null;
+    matches: DuplicateMatch<Evento>[];
+  }>({
+    open: false,
+    event: null,
+    matches: [],
+  });
+
+  const publishedEvents = useMemo(
+    () => events.filter((e) => e.estado === "publicado"),
+    [events]
+  );
+
+  const duplicatesMap = useMemo(() => {
+    const map: Record<string, DuplicateMatch<Evento>[]> = {};
+    for (const e of events) {
+      if (e.estado !== "publicado") {
+        const matches = findEventDuplicates(e, publishedEvents);
+        if (matches.length > 0) map[e.id] = matches;
+      }
+    }
+    return map;
+  }, [events, publishedEvents]);
+
   const stats = useMemo(() => {
     const total = events.length;
     const published = events.filter((e) => e.estado === "publicado").length;
@@ -64,6 +92,19 @@ export function EventsTable({ events, usersMap = {} }: Props) {
       toast.error("Error inesperado");
     } finally {
       setLoadingId(null);
+    }
+  };
+
+  const handlePublishClick = (e: Evento) => {
+    const matches = duplicatesMap[e.id];
+    if (matches && matches.length > 0) {
+      setConfirmModal({
+        open: true,
+        event: e,
+        matches,
+      });
+    } else {
+      onToggle(e.id, "publicado");
     }
   };
 
@@ -93,9 +134,26 @@ export function EventsTable({ events, usersMap = {} }: Props) {
           <TableBody>
             {events.map((e) => {
               const creator = e.creado_por ? usersMap[e.creado_por] : null;
+              const matches = duplicatesMap[e.id];
+              const hasDuplicates = matches && matches.length > 0;
+
               return (
                 <TableRow key={e.id}>
-                  <TableCell className="font-medium">{e.titulo}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col gap-1">
+                      <span>{e.titulo}</span>
+                      {hasDuplicates && (
+                        <div
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded w-fit cursor-pointer hover:bg-amber-100 transition-colors"
+                          onClick={() => setConfirmModal({ open: true, event: e, matches })}
+                          title="Clic para ver coincidencia"
+                        >
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          <span>Posible duplicado ({matches.length})</span>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{formatDate(e.fecha_inicio)}</TableCell>
                   <TableCell>{e.zona || "-"}</TableCell>
                   <TableCell>
@@ -143,7 +201,8 @@ export function EventsTable({ events, usersMap = {} }: Props) {
                         <Button
                           size="sm"
                           disabled={loadingId === e.id}
-                          onClick={() => onToggle(e.id, "publicado")}
+                          className={hasDuplicates ? "border border-amber-500 bg-amber-600 hover:bg-amber-700 text-white" : ""}
+                          onClick={() => handlePublishClick(e)}
                         >
                           Publicar
                         </Button>
@@ -170,6 +229,21 @@ export function EventsTable({ events, usersMap = {} }: Props) {
         }}
         user={selectedUser}
       />
+
+      {confirmModal.event && (
+        <DuplicateConfirmModal
+          open={confirmModal.open}
+          onOpenChange={(open) => setConfirmModal((m) => ({ ...m, open }))}
+          targetName={confirmModal.event.titulo}
+          targetType="evento"
+          matches={confirmModal.matches}
+          onConfirm={() => {
+            if (confirmModal.event) {
+              onToggle(confirmModal.event.id, "publicado");
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
