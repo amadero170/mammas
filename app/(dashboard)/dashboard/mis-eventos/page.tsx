@@ -134,6 +134,14 @@ export default function MisEventosPage() {
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {evt.categoria && (
+                    <Badge className="bg-[#4c2f92] text-white">{evt.categoria}</Badge>
+                  )}
+                  {evt.tags?.map((tag) => (
+                    <Badge key={tag} variant="outline" className="border-purple-200 text-[#4c2f92] bg-purple-50">
+                      {tag}
+                    </Badge>
+                  ))}
                   {evt.zona && (
                     <Badge variant="secondary">{evt.zona}</Badge>
                   )}
