@@ -85,9 +85,11 @@ function groupByMonth(events: Evento[]): [string, Evento[]][] {
 /* ── MetaRow helper ── */
 function MetaRow({ icon, text }: { icon: string; text: string }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <Image src={icon} alt="" width={16} height={16} className="shrink-0 object-contain" />
-      <span className="text-sm text-foreground">{text}</span>
+    <div className="flex items-start gap-2.5 min-w-0">
+      <Image src={icon} alt="" width={16} height={16} className="shrink-0 object-contain mt-0.5" />
+      <span className="text-sm text-foreground line-clamp-3 break-words [overflow-wrap:anywhere]" title={text}>
+        {text}
+      </span>
     </div>
   );
 }

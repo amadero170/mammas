@@ -462,7 +462,8 @@ function DirectorioContent() {
                           href={ensureProtocol(p.direccion)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#4c2f92] underline underline-offset-2 hover:text-[#3d2575] inline-block max-w-[70%] truncate align-bottom"
+                          title={p.direccion}
+                          className="text-[#4c2f92] underline underline-offset-2 hover:text-[#3d2575] line-clamp-3 break-words [overflow-wrap:anywhere]"
                         >
                           {p.direccion}
                         </a>
