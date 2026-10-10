@@ -12,6 +12,18 @@ interface ImageUploadProps {
   onRemove: () => void;
   value: string | null;
   folder?: string;
+  /** Proporción del recorte (ancho / alto). Ej: 1 para logos, 0.75 para 3:4. */
+  aspectRatio?: number;
+}
+
+/**
+ * Con recorte activado, Cloudinary sube la imagen original y guarda el recorte
+ * como "custom coordinates". Para mostrar la versión recortada hay que pedirla con c_crop,g_custom.
+ */
+function croppedUrl(info: any): string {
+  const url: string = info.secure_url;
+  if (!info.coordinates?.custom) return url;
+  return url.replace("/upload/", "/upload/c_crop,g_custom/");
 }
 
 export function ImageUpload({
@@ -19,7 +31,8 @@ export function ImageUpload({
   onChange,
   onRemove,
   value,
-  folder = "mamas"
+  folder = "mamas",
+  aspectRatio = 1,
 }: ImageUploadProps) {
 
   // Restore scroll whenever the Cloudinary widget iframe is removed from the DOM
@@ -36,7 +49,7 @@ export function ImageUpload({
 
   const onUpload = useCallback((result: any) => {
     if (result.event === "success") {
-      onChange(result.info.secure_url, result.info.public_id);
+      onChange(croppedUrl(result.info), result.info.public_id);
       // Restore scroll after successful upload
       setTimeout(() => {
         document.body.style.overflow = "";
@@ -80,6 +93,23 @@ export function ImageUpload({
             resourceType: "image",
             showPoweredBy: false,
             clientAllowedFormats: ["jpg", "jpeg", "png", "gif", "webp"],
+            // Permite mover y ajustar el encuadre antes de subir
+            cropping: true,
+            croppingAspectRatio: aspectRatio,
+            showSkipCropButton: false,
+            croppingShowDimensions: false,
+            multiple: false,
+            language: "es",
+            text: {
+              es: {
+                crop: {
+                  title: "Ajusta el encuadre",
+                  crop_btn: "Listo",
+                  skip_btn: "Omitir",
+                  reset_btn: "Restablecer",
+                },
+              },
+            },
           }}
         >
           {({ open }) => {

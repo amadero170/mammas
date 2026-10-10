@@ -30,9 +30,10 @@ export default function AgregarEventoPage() {
   return (
     <div className="container mx-auto space-y-6 px-4 py-8">
       <div>
-        <h1 className="text-3xl font-bold">Agregar Evento</h1>
+        <h1 className="text-3xl font-bold">Nuevo evento</h1>
         <p className="text-muted-foreground">
-          Completá estos datos y se enviará para que un admin lo publique.
+          Completa estos datos y lo enviaremos a revisión. Cuando una administradora lo apruebe,
+          aparecerá en la página de eventos y te avisaremos por correo.
         </p>
       </div>
 
@@ -42,6 +43,10 @@ export default function AgregarEventoPage() {
           submitLabel="Enviar Evento"
           savingLabel="Enviando..."
           resetOnSuccess
+          successMessage={{
+            title: "¡Evento enviado a revisión!",
+            description: "Te avisaremos por correo cuando una administradora lo revise. Revisa también tu carpeta de spam.",
+          }}
           onCancel={() => router.push("/dashboard/mis-eventos")}
           onSuccess={() => {
             router.push("/dashboard/mis-eventos");

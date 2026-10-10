@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
+import { FloatingAddButton } from "@/components/floating-add-button";
 import { toast } from "sonner";
 import { Globe, Facebook, Instagram, MapPin, Star, RefreshCw, FileEdit, Flag, MoreVertical } from "lucide-react";
 import { SuggestChangeModal } from "@/components/suggest-change-modal";
@@ -37,6 +37,7 @@ import { getProviderRatingsSummary, getMyRatings, type RatingSummary } from "@/a
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
 import { getCategories, getZones, getTags } from "@/app/actions/configuracion";
+import { sortEs, tagKey, uniqueTags } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { RatingModal } from "@/components/rating-modal";
 import { LoginModal } from "@/components/login-modal";
@@ -85,9 +86,9 @@ function DirectorioContent() {
     });
   }, []);
 
-  const [allCategories, setAllCategories] = useState<string[]>([...PROVIDER_CATEGORIAS]);
-  const [allZones, setAllZones] = useState<string[]>([...PROVIDER_ZONAS]);
-  const [allTags, setAllTags] = useState<string[]>([...PROVIDER_TAGS]);
+  const [allCategories, setAllCategories] = useState<string[]>(sortEs(PROVIDER_CATEGORIAS));
+  const [allZones, setAllZones] = useState<string[]>(sortEs(PROVIDER_ZONAS));
+  const [allTags, setAllTags] = useState<string[]>(uniqueTags(PROVIDER_TAGS));
 
   useEffect(() => {
     async function loadDynamicOptions() {
@@ -103,16 +104,16 @@ function DirectorioContent() {
         setAllZones(zoneRes.zones.map((z) => z.nombre));
       }
       if (tagRes.success && tagRes.tags.length > 0) {
-        setAllTags(tagRes.tags.map((t) => t.nombre));
+        setAllTags(uniqueTags(tagRes.tags.map((t) => t.nombre)));
       }
     }
     loadDynamicOptions();
   }, []);
 
   const filteredTagOptions = useMemo(() => {
-    const s = tagSearch.trim().toLowerCase();
+    const s = tagKey(tagSearch);
     if (!s) return allTags;
-    return allTags.filter((t) => t.toLowerCase().includes(s));
+    return allTags.filter((t) => tagKey(t).includes(s));
   }, [tagSearch, allTags]);
 
   const [suggestTarget, setSuggestTarget] = useState<Proveedor | null>(null);
@@ -289,7 +290,7 @@ function DirectorioContent() {
               <DialogTitle>Lista de Tags Disponibles</DialogTitle>
             </DialogHeader>
             <div className="flex flex-wrap gap-1.5 pt-4">
-              {[...allTags].sort((a, b) => a.localeCompare(b)).map((t) => {
+              {allTags.map((t) => {
                 const active = selectedTags.includes(t);
                 return (
                   <button
@@ -310,18 +311,7 @@ function DirectorioContent() {
           </DialogContent>
         </Dialog>
 
-        {user && (
-          <div className="mx-auto mt-6 flex max-w-5xl justify-end">
-            <Link href="/dashboard/agregar-proveedor">
-              <Button
-                variant="outline"
-                className="rounded-full border border-[#4c2f92] px-6 font-bold text-[#4c2f92] hover:bg-[#4c2f92]/5"
-              >
-                agregar +
-              </Button>
-            </Link>
-          </div>
-        )}
+        {user && <FloatingAddButton href="/dashboard/agregar-proveedor" label="Agregar proveedor" />}
       </div>
 
       {/* Cards Grid */}
@@ -335,15 +325,15 @@ function DirectorioContent() {
             No se encontraron resultados.
           </div>
         ) : (
-          <div className="mx-auto grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {providers.map((p) => (
               <div
                 key={p.id}
-                className="relative flex flex-col rounded-none border border-gray-300 bg-white p-6 shadow-sm"
+                className="relative flex min-w-0 flex-col rounded-none border border-gray-300 bg-white p-6 shadow-sm"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-4">
+                  <div className="flex min-w-0 items-start gap-4">
                     <div className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 overflow-hidden relative">
                       {p.logo_url ? (
                         <Image 
@@ -359,11 +349,11 @@ function DirectorioContent() {
                         </span>
                       )}
                     </div>
-                    <div>
-                      <h3 className="font-aller text-xl font-bold leading-tight text-[#4c2f92]">
+                    <div className="min-w-0">
+                      <h3 className="font-aller text-xl font-bold leading-tight text-[#4c2f92] break-words [overflow-wrap:anywhere]">
                         {p.nombre}
                       </h3>
-                      <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground">
+                      <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground break-words [overflow-wrap:anywhere]">
                         {(p.categorias?.length ? p.categorias.join(" - ") : "Categoría")} / {p.zona || "Zona"}
                       </p>
                       {(() => {

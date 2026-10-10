@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { ImageUpload } from "@/components/ui/image-upload";
 
 import { EVENT_ZONAS } from "@/lib/constants/events";
+import { getZones } from "@/app/actions/configuracion";
+import { MapsLinkField } from "@/components/forms/maps-link-field";
+import { sortEs } from "@/lib/utils";
 import type { Evento } from "@/lib/types";
 
 export type EventFormValues = {
@@ -82,6 +85,8 @@ type Props = {
   onCancel?: () => void;
   /** If true, reset the form after success. Useful for "create" flows. */
   resetOnSuccess?: boolean;
+  /** Mensaje al guardar con éxito (por defecto: "Evento actualizado" / "Evento enviado"). */
+  successMessage?: { title: string; description?: string };
 };
 
 export function EventForm({
@@ -92,8 +97,16 @@ export function EventForm({
   onSuccess,
   onCancel,
   resetOnSuccess = false,
+  successMessage,
 }: Props) {
   const [saving, setSaving] = useState(false);
+  const [zonesList, setZonesList] = useState<string[]>(sortEs(EVENT_ZONAS));
+
+  useEffect(() => {
+    getZones().then((res) => {
+      if (res.success && res.zones.length > 0) setZonesList(res.zones.map((z) => z.nombre));
+    });
+  }, []);
 
   const initial = useMemo(
     () => (event ? fromEvento(event) : emptyForm()),
@@ -132,7 +145,11 @@ export function EventForm({
         toast.error("No se pudo guardar", { description: res.error });
         return;
       }
-      toast.success(event ? "Evento actualizado" : "Evento enviado");
+      if (successMessage) {
+        toast.success(successMessage.title, { description: successMessage.description });
+      } else {
+        toast.success(event ? "Evento actualizado" : "Evento enviado");
+      }
       if (resetOnSuccess) setForm(emptyForm());
       onSuccess?.();
     } catch {
@@ -153,6 +170,7 @@ export function EventForm({
         <ImageUpload
           value={form.imagen_url}
           folder="mamas-eventos"
+          aspectRatio={3 / 4}
           onChange={(url, publicId) =>
             setForm((f) => ({
               ...f,
@@ -186,7 +204,7 @@ export function EventForm({
         <Textarea
           value={form.descripcion}
           onChange={(e) => set("descripcion", e.target.value)}
-          placeholder="Describí de qué se trata el evento..."
+          placeholder="Describe de qué se trata el evento..."
           rows={4}
         />
       </div>
@@ -240,7 +258,7 @@ export function EventForm({
           onChange={(e) => set("zona", e.target.value)}
         >
           <option value="">Seleccionar zona</option>
-          {EVENT_ZONAS.map((z) => (
+          {zonesList.map((z) => (
             <option key={z} value={z}>
               {z}
             </option>
@@ -258,24 +276,20 @@ export function EventForm({
         />
       </div>
 
-      {/* Google Maps + Teléfono */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="grid gap-2">
-          <Label>Link Google Maps</Label>
-          <Input
-            value={form.google_maps_link}
-            onChange={(e) => set("google_maps_link", e.target.value)}
-            placeholder="https://maps.google.com/..."
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label>Teléfono</Label>
-          <Input
-            value={form.telefono}
-            onChange={(e) => set("telefono", e.target.value)}
-            placeholder="Ej: 322-..."
-          />
-        </div>
+      {/* Google Maps */}
+      <MapsLinkField
+        value={form.google_maps_link}
+        onChange={(v) => set("google_maps_link", v)}
+      />
+
+      {/* Teléfono */}
+      <div className="grid gap-2">
+        <Label>Teléfono</Label>
+        <Input
+          value={form.telefono}
+          onChange={(e) => set("telefono", e.target.value)}
+          placeholder="Ej: 322-..."
+        />
       </div>
 
       {/* Precios + Link externo */}

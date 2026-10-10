@@ -28,7 +28,7 @@ export interface SolicitudMamma {
 
 export interface Profile {
   id: string;
-  role: "admin" | "mamma" | "user" | null;
+  role: "admin" | "mamma" | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +41,9 @@ export interface UserDetail {
   role?: string | null;
 }
 
+/** Revisión de una aportación (proveedor o evento) por parte de las admins */
+export type Aprobacion = "pendiente" | "aprobado" | "rechazado";
+
 export interface Proveedor {
   id: string;
   nombre: string;
@@ -51,6 +54,10 @@ export interface Proveedor {
   tags: string[];
   mama_owned: boolean;
   is_active: boolean;
+  aprobacion: Aprobacion;
+  motivo_rechazo?: string | null;
+  revisado_at?: string | null;
+  revisado_por?: string | null;
   creado_por?: string | null;
   created_at: string;
   updated_at: string;
@@ -71,7 +78,8 @@ export interface CreateSolicitudData {
   mensaje?: string;
 }
 
-export type EstadoEvento = "draft" | "publicado" | "archivado";
+/** 'publicado' = activo (visible), 'draft' = inactivo */
+export type EstadoEvento = "draft" | "publicado";
 
 export interface Evento {
   id: string;
@@ -87,7 +95,11 @@ export interface Evento {
   imagen_public_id: string | null;
   link_externo: string | null;
   estado: EstadoEvento;
-  creado_por: string;
+  aprobacion: Aprobacion;
+  motivo_rechazo?: string | null;
+  revisado_at?: string | null;
+  revisado_por?: string | null;
+  creado_por: string | null;
   horario_inicio: string | null;
   horario_fin: string | null;
   telefono: string | null;

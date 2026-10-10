@@ -26,6 +26,7 @@ export default async function Home() {
     .from("events")
     .select("*")
     .eq("estado", "publicado")
+    .eq("aprobacion", "aprobado")
     .order("fecha_inicio", { ascending: true })
     .limit(20);
 
@@ -40,7 +41,7 @@ export default async function Home() {
   return (
     <main>
       {/* ═══════════════════════ HERO ═══════════════════════ */}
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#2e1b40]">
+      <section className="relative flex min-h-screen min-h-svh items-center justify-center overflow-hidden bg-[#2e1b40]">
         {/* Background image */}
         <Image
           src="https://res.cloudinary.com/amadero170/image/upload/f_auto,q_auto/v1778972172/mammas-assets/mammas_home_image.jpg"
@@ -166,7 +167,7 @@ export default async function Home() {
             Próximos
           </h2>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {upcomingEvents.length === 0 ? (
               <p className="col-span-full text-center text-muted-foreground">
                 No hay eventos próximos por el momento.
@@ -214,7 +215,7 @@ export default async function Home() {
                     )}
 
                     {/* Title */}
-                    <h3 className="mt-3 text-lg font-bold leading-snug text-foreground">
+                    <h3 className="mt-3 text-lg font-bold leading-snug text-foreground break-words [overflow-wrap:anywhere]">
                       {evt.titulo}
                     </h3>
 

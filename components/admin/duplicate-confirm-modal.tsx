@@ -50,7 +50,7 @@ export function DuplicateConfirmModal<T extends { id: string; nombre?: string; t
 
         <div className="space-y-3 py-3">
           <p className="text-sm text-foreground">
-            Estás a punto de activar <strong>&quot;{targetName}&quot;</strong>, pero se encontraron coincidencias con los siguientes {targetType}s existentes:
+            Estás a punto de aprobar <strong>&quot;{targetName}&quot;</strong>, pero se encontraron coincidencias con los siguientes {targetType}s existentes:
           </p>
 
           <div className="max-h-48 overflow-y-auto space-y-2 rounded-md border bg-muted/40 p-3">
@@ -86,7 +86,7 @@ export function DuplicateConfirmModal<T extends { id: string; nombre?: string; t
               onConfirm();
             }}
           >
-            Activar de todos modos
+            Aprobar de todos modos
           </Button>
         </DialogFooter>
       </DialogContent>

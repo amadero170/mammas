@@ -98,20 +98,19 @@ export async function consumeInviteAndCreateUser(
     };
   }
 
-  // 3) Best-effort: crear/actualizar profile (si existe la tabla/columnas)
-  try {
-    await supabase.from("profiles").upsert(
-      {
-        id: created.user.id,
-        role: "user",
-        email: invite.email,
-        nombre: invite.nombre ?? null,
-      },
-      { onConflict: "id" }
-    );
-  } catch (e) {
-    // No bloqueamos el flujo del MVP si el schema de profiles difiere.
-    console.warn("[INVITE] Could not upsert profile:", e);
+  // 3) El trigger on_auth_user_created ya crea el profile como 'mamma'.
+  //    Esto solo asegura email/nombre; no bloquea el registro si falla.
+  const { error: profileErr } = await supabase.from("profiles").upsert(
+    {
+      id: created.user.id,
+      role: "mamma",
+      email: invite.email,
+      nombre: invite.nombre ?? null,
+    },
+    { onConflict: "id" }
+  );
+  if (profileErr) {
+    console.warn("[INVITE] Could not upsert profile:", profileErr.message);
   }
 
   // 4) Marcar invitación como usada

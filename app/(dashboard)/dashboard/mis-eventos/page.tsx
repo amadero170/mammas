@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EventForm } from "@/components/forms/event-form";
+import { AprobacionBadge, MotivoRechazo } from "@/components/dashboard/aprobacion-status";
 
 export default function MisEventosPage() {
   const [q, setQ] = useState("");
@@ -81,12 +82,13 @@ export default function MisEventosPage() {
       <div>
         <h1 className="text-3xl font-bold">Mis Eventos</h1>
         <p className="text-muted-foreground">
-          Eventos que creaste. Quedan como borrador hasta que un admin los
-          publique.
+          Los eventos que agregas quedan en revisión hasta que una administradora los apruebe.
+          Te avisaremos por correo cuando se aprueben o si necesitan algún cambio (revisa también
+          tu carpeta de spam).
         </p>
       </div>
 
-      <div className="grid gap-3 rounded-lg border bg-background p-4">
+      <div className="grid grid-cols-1 gap-3 rounded-lg border bg-background p-4">
         <div className="flex gap-3">
           <div className="flex-1">
             <Input
@@ -111,19 +113,19 @@ export default function MisEventosPage() {
       ) : events.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <p className="text-muted-foreground">
-            Todavía no creaste eventos
+            Todavía no has creado eventos
           </p>
           <p className="mt-2 text-sm text-muted-foreground/70">
-            Podés crear uno desde &ldquo;Agregar Evento&rdquo;.
+            Puedes crear uno desde &ldquo;Nuevo evento&rdquo;.
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.map((evt) => (
             <Card key={evt.id} className="overflow-hidden">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{evt.titulo}</CardTitle>
+                  <CardTitle className="text-lg break-words [overflow-wrap:anywhere]">{evt.titulo}</CardTitle>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -145,16 +147,11 @@ export default function MisEventosPage() {
                   {evt.zona && (
                     <Badge variant="secondary">{evt.zona}</Badge>
                   )}
-                  <Badge
-                    variant={
-                      evt.estado === "publicado" ? "default" : "outline"
-                    }
-                  >
-                    {evt.estado === "publicado" ? "Publicado" : "Borrador"}
-                  </Badge>
+                  <AprobacionBadge aprobacion={evt.aprobacion} visible={evt.estado === "publicado"} />
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {evt.aprobacion === "rechazado" && <MotivoRechazo motivo={evt.motivo_rechazo} />}
                 <div className="text-sm text-muted-foreground">
                   📅 {formatDate(evt.fecha_inicio)}
                   {evt.fecha_fin && ` — ${formatDate(evt.fecha_fin)}`}
@@ -174,14 +171,14 @@ export default function MisEventosPage() {
                   </p>
                 )}
               </CardContent>
-              {evt.estado !== "publicado" && (
+              {evt.aprobacion !== "aprobado" && (
                 <div className="px-6 pb-4 flex justify-end">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setEditingEvent(evt)}
                   >
-                    Editar borrador
+                    {evt.aprobacion === "rechazado" ? "Corregir y reenviar" : "Editar"}
                   </Button>
                 </div>
               )}
@@ -196,12 +193,16 @@ export default function MisEventosPage() {
             <DialogHeader>
               <DialogTitle>Editar Evento</DialogTitle>
               <DialogDescription>
-                Modificá los datos del evento en estado borrador. Los cambios requerirán aprobación del administrador.
+                Modifica los datos del evento. Al guardar, quedará en revisión hasta que una administradora lo apruebe.
               </DialogDescription>
             </DialogHeader>
             <EventForm
               event={editingEvent}
               onSubmit={(values) => updateMyEvent(editingEvent.id, values)}
+              successMessage={{
+                title: "Cambios guardados",
+                description: "Quedó en revisión. Te avisaremos por correo cuando se apruebe.",
+              }}
               submitLabel="Guardar Cambios"
               savingLabel="Guardando..."
               onCancel={() => setEditingEvent(null)}

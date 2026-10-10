@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, cleanTag, tagKey } from "@/lib/utils";
 
 interface TagAutocompleteProps {
   /** All available tags to choose from */
@@ -38,15 +38,16 @@ export function TagAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Filter available tags by query (case-insensitive, partial match)
+  // Filter available tags by query (sin importar mayúsculas ni acentos, coincidencia parcial)
   const suggestions = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = tagKey(query);
     if (!q) return [];
+    const selectedKeys = new Set(selectedTags.map(tagKey));
     return availableTags
-      .filter(
-        (tag) =>
-          tag.toLowerCase().includes(q) && !selectedTags.includes(tag)
-      )
+      .filter((tag) => {
+        const key = tagKey(tag);
+        return key.includes(q) && !selectedKeys.has(key);
+      })
       .slice(0, maxSuggestions);
   }, [query, availableTags, selectedTags, maxSuggestions]);
 
@@ -70,9 +71,12 @@ export function TagAutocomplete({
   }, [suggestions.length]);
 
   const addTag = (tag: string) => {
-    const trimmed = tag.trim();
-    if (trimmed && !selectedTags.includes(trimmed)) {
-      onChange([...selectedTags, trimmed]);
+    const cleaned = cleanTag(tag);
+    const key = tagKey(cleaned);
+    // Si ya existe en el catálogo con otra escritura (ej: "musica" -> "Música"), usar la del catálogo
+    const canonical = availableTags.find((t) => tagKey(t) === key) ?? cleaned;
+    if (cleaned && !selectedTags.some((t) => tagKey(t) === key)) {
+      onChange([...selectedTags, canonical]);
     }
     setQuery("");
     setOpen(false);

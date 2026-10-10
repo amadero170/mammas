@@ -1,6 +1,7 @@
 import Footer from "@/components/footer";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { LayoutDashboard, Users, ShoppingBag, Calendar, Settings, FileEdit, Flag } from "lucide-react";
 
@@ -29,10 +30,13 @@ export default async function AdminLayout({
   }
 
   // Fetch pending count badges in parallel
+  const adminSupabase = createAdminClient();
   const [
     { count: pendingSolicitudesCount },
     { count: pendingSuggestionsCount },
     { count: pendingReportsCount },
+    { count: pendingProvidersCount },
+    { count: pendingEventsCount },
   ] = await Promise.all([
     supabase
       .from("mammas_autorizadas")
@@ -46,6 +50,14 @@ export default async function AdminLayout({
       .from("reports")
       .select("*", { count: "exact", head: true })
       .eq("estado", "pending"),
+    adminSupabase
+      .from("providers")
+      .select("*", { count: "exact", head: true })
+      .eq("aprobacion", "pendiente"),
+    adminSupabase
+      .from("events")
+      .select("*", { count: "exact", head: true })
+      .eq("aprobacion", "pendiente"),
   ]);
 
   return (
@@ -78,6 +90,11 @@ export default async function AdminLayout({
             >
               <ShoppingBag className="h-4 w-4" />
               <span>Proveedores</span>
+              {!!pendingProvidersCount && pendingProvidersCount > 0 && (
+                <span className="rounded-full bg-[#4c2f92] text-white px-2 py-0.5 text-[11px] font-bold">
+                  {pendingProvidersCount}
+                </span>
+              )}
             </Link>
             <Link
               href="/admin/eventos"
@@ -85,6 +102,11 @@ export default async function AdminLayout({
             >
               <Calendar className="h-4 w-4" />
               <span>Eventos</span>
+              {!!pendingEventsCount && pendingEventsCount > 0 && (
+                <span className="rounded-full bg-[#4c2f92] text-white px-2 py-0.5 text-[11px] font-bold">
+                  {pendingEventsCount}
+                </span>
+              )}
             </Link>
             <Link
               href="/admin/sugerencias"

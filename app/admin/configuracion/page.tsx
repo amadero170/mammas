@@ -2,11 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Tag, Layers, MapPin, Search } from "lucide-react";
+import { Plus, Trash2, Tag, Layers, MapPin, Search, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import {
   getTags,
@@ -15,9 +23,11 @@ import {
   getCategories,
   createCategory,
   deleteCategory,
+  renameCategory,
   getZones,
   createZone,
   deleteZone,
+  renameZone,
   type TagItem,
   type CategoryItem,
   type ZoneItem,
@@ -39,8 +49,6 @@ export default function ConfiguracionAdminPage() {
   const [categoriesTipo, setCategoriesTipo] = useState<"provider" | "event">("provider");
   const [categoriesSearch, setCategoriesSearch] = useState("");
   const [newCatName, setNewCatName] = useState("");
-  const [newCatIcon, setNewCatIcon] = useState("");
-  const [newCatOrden, setNewCatOrden] = useState("0");
   const [loadingCategories, setLoadingCategories] = useState(false);
 
   // ── Zones State ──
@@ -130,13 +138,10 @@ export default function ConfiguracionAdminPage() {
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
-    const ordenNum = parseInt(newCatOrden) || 0;
-    const res = await createCategory(newCatName, categoriesTipo, newCatIcon, ordenNum);
+    const res = await createCategory(newCatName, categoriesTipo);
     if (res.success) {
       toast.success(`Categoría "${newCatName.trim()}" creada`);
       setNewCatName("");
-      setNewCatIcon("");
-      setNewCatOrden("0");
       loadCategories();
     } else {
       toast.error("No se pudo crear la categoría", { description: res.error });
@@ -191,6 +196,39 @@ export default function ConfiguracionAdminPage() {
         setConfirmModal((c) => ({ ...c, open: false }));
       },
     });
+  };
+
+  // ── Rename (categorías y zonas) ──
+  const [renameTarget, setRenameTarget] = useState<{
+    kind: "categoria" | "zona";
+    id: string;
+    nombre: string;
+  } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
+
+  const openRename = (kind: "categoria" | "zona", id: string, nombre: string) => {
+    setRenameTarget({ kind, id, nombre });
+    setRenameValue(nombre);
+  };
+
+  const handleRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renameTarget || !renameValue.trim()) return;
+    setRenaming(true);
+    const res =
+      renameTarget.kind === "categoria"
+        ? await renameCategory(renameTarget.id, renameValue)
+        : await renameZone(renameTarget.id, renameValue);
+    setRenaming(false);
+    if (res.success) {
+      toast.success(`"${renameTarget.nombre}" ahora se llama "${renameValue.trim()}"`);
+      setRenameTarget(null);
+      if (renameTarget.kind === "categoria") loadCategories();
+      else loadZones();
+    } else {
+      toast.error("No se pudo renombrar", { description: res.error });
+    }
   };
 
   // Filtered lists
@@ -358,16 +396,6 @@ export default function ConfiguracionAdminPage() {
               onChange={(e) => setNewCatName(e.target.value)}
               className="w-full sm:w-64"
             />
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Orden:</span>
-              <Input
-                type="number"
-                placeholder="0"
-                value={newCatOrden}
-                onChange={(e) => setNewCatOrden(e.target.value)}
-                className="w-20"
-              />
-            </div>
             <Button type="submit" className="bg-[#4c2f92] hover:bg-[#3d2575]">
               <Plus className="mr-2 h-4 w-4" /> Crear Categoría
             </Button>
@@ -386,16 +414,23 @@ export default function ConfiguracionAdminPage() {
                 <thead className="bg-muted/50 text-xs uppercase text-muted-foreground border-b">
                   <tr>
                     <th className="px-4 py-3">Nombre</th>
-                    <th className="px-4 py-3">Orden</th>
-                    <th className="px-4 py-3 text-right">Acción</th>
+                    <th className="px-4 py-3 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {filteredCategories.map((cat) => (
                     <tr key={cat.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3 font-semibold text-foreground">{cat.nombre}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{cat.orden ?? 0}</td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openRename("categoria", cat.id, cat.nombre)}
+                          className="text-[#4c2f92] hover:bg-purple-50"
+                          title="Renombrar categoría"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -458,13 +493,21 @@ export default function ConfiguracionAdminPage() {
               <div className="mb-2 text-xs font-semibold text-muted-foreground">
                 Total: {filteredZones.length} zonas
               </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredZones.map((z) => (
                   <div
                     key={z.id}
                     className="flex items-center justify-between rounded-md border p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
                   >
                     <span className="font-medium text-foreground">{z.nombre}</span>
+                    <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openRename("zona", z.id, z.nombre)}
+                      className="rounded-full p-1 text-muted-foreground hover:bg-purple-100 hover:text-[#4c2f92] transition-colors"
+                      title="Renombrar zona"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
                     <button
                       onClick={() => handleDeleteZone(z.id, z.nombre)}
                       className="rounded-full p-1 text-muted-foreground hover:bg-red-100 hover:text-red-600 transition-colors"
@@ -472,6 +515,7 @@ export default function ConfiguracionAdminPage() {
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -479,6 +523,40 @@ export default function ConfiguracionAdminPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Rename Dialog */}
+      <Dialog open={!!renameTarget} onOpenChange={(open) => !open && setRenameTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <form onSubmit={handleRename}>
+            <DialogHeader>
+              <DialogTitle>
+                Renombrar {renameTarget?.kind === "categoria" ? "categoría" : "zona"}
+              </DialogTitle>
+              <DialogDescription>
+                Se actualizará también en todos los proveedores y eventos que la usan.
+              </DialogDescription>
+            </DialogHeader>
+            <Input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              className="my-4"
+            />
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setRenameTarget(null)} disabled={renaming}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-[#4c2f92] hover:bg-[#3d2575]"
+                disabled={renaming || !renameValue.trim() || renameValue.trim() === renameTarget?.nombre}
+              >
+                {renaming ? "Guardando..." : "Guardar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm Action Modal */}
       <ConfirmActionModal

@@ -7,7 +7,7 @@ import type {
   EstadoSolicitud,
   CreateSolicitudData,
 } from "@/lib/types";
-import { sendInviteEmail } from "@/lib/email/resend";
+import { sendInviteEmail, sendSolicitudRechazadaEmail } from "@/lib/email/resend";
 
 export async function createSolicitud(data: CreateSolicitudData) {
   try {
@@ -41,7 +41,11 @@ export async function createSolicitud(data: CreateSolicitudData) {
       return { success: false, error: error.message };
     }
 
-    return { success: true };
+    // Dirección desde la que llegará el correo de invitación, para mostrarla en pantalla
+    const from = process.env.RESEND_FROM_EMAIL || "";
+    const remitente = from.match(/<([^>]+)>/)?.[1] ?? (from.trim() || null);
+
+    return { success: true, remitente };
   } catch (error) {
     console.error("Unexpected error:", error);
     return { success: false, error: "Error inesperado al crear la solicitud" };
@@ -160,6 +164,12 @@ export async function rechazarSolicitud(
   try {
     const supabase = await createClient();
 
+    const { data: solicitud } = await supabase
+      .from("mammas_autorizadas")
+      .select("email, nombre")
+      .eq("id", id)
+      .single();
+
     const { error } = await supabase
       .from("mammas_autorizadas")
       .update({
@@ -179,7 +189,21 @@ export async function rechazarSolicitud(
       return { success: false, error: error.message };
     }
 
-    return { success: true };
+    // Avisar por correo; si falla, el rechazo queda guardado igual
+    if (solicitud?.email) {
+      try {
+        await sendSolicitudRechazadaEmail({
+          to: solicitud.email,
+          nombre: solicitud.nombre,
+          razon,
+        });
+      } catch (emailError) {
+        console.error("Error sending rejection email:", emailError);
+        return { success: true, emailSent: false, warning: "Rechazada, pero no se pudo enviar el correo" };
+      }
+    }
+
+    return { success: true, emailSent: true };
   } catch (error) {
     console.error("Unexpected error:", error);
     return {

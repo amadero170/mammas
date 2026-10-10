@@ -34,3 +34,6 @@ export const PROVIDER_ZONAS = [
   "Todas las zonas",
 ] as const;
 
+
+/** Máximo de categorías que puede tener un proveedor */
+export const MAX_CATEGORIAS = 5;

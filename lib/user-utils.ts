@@ -54,7 +54,7 @@ export async function getUserDetailsMap(
         profile?.telefono ||
         null;
 
-      const role = profile?.role || "user";
+      const role = profile?.role || null;
 
       map[id] = {
         id,

@@ -30,18 +30,15 @@ import {
   Menu,
   LogOut,
   User,
-  ShoppingBag,
-  Plus,
   LayoutDashboard,
   ChevronDown,
-  Calendar,
-  CalendarPlus,
-
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { getMyProfile } from "@/app/actions/perfil";
+import { getNameInitials } from "@/components/account-dialog";
 
 interface Profile {
-  role: "admin" | "user" | null;
+  role: "admin" | "mamma" | null;
 }
 
 function LoginQueryListener({ setLoginModalOpen }: { setLoginModalOpen: (v: boolean) => void }) {
@@ -70,6 +67,7 @@ function LoginQueryListener({ setLoginModalOpen }: { setLoginModalOpen: (v: bool
 export function Navbar() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -138,21 +136,27 @@ export function Navbar() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
+  // Nombre del perfil (el mismo que ven las admins); mientras carga, el inicio del correo
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) {
+      setDisplayName("");
+      return;
+    }
+    getMyProfile().then((res) => {
+      if (res.success && res.profile.nombre) setDisplayName(res.profile.nombre);
+    });
+  }, [userId]);
+
+  const shownName = displayName || user?.email?.split("@")[0] || "";
+  const firstName = shownName.split(" ")[0];
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
     router.refresh();
   };
 
-  const getInitials = (email: string) => {
-    return email
-      .split("@")[0]
-      .split(".")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   const navLinks = [
     { href: "/", label: "inicio" },
@@ -243,11 +247,11 @@ export function Navbar() {
                   <Avatar className="h-7 w-7">
                     <AvatarImage src={user.user_metadata?.avatar_url} />
                     <AvatarFallback className="bg-[#4c2f92] text-xs font-bold text-white capitalize font-aller">
-                      {getInitials(user.email || "")}
+                      {getNameInitials(shownName)}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm font-semibold text-[#2e1b40] capitalize tracking-wide">
-                    {user.email?.split("@")[0]}
+                    {firstName}
                   </span>
                 </button>
               </DropdownMenuTrigger>
@@ -275,45 +279,12 @@ export function Navbar() {
                   Mi Cuenta
                 </DropdownMenuItem>
                 {profile?.role !== "admin" && (
-                  <>
-                    <DropdownMenuItem asChild className="cursor-pointer">
-                      <Link
-                        href="/dashboard/mis-proveedores"
-                        className="w-full"
-                      >
-                        <ShoppingBag className="mr-2 h-4 w-4" />
-                        Mis Proveedores
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="cursor-pointer">
-                      <Link
-                        href="/dashboard/agregar-proveedor"
-                        className="w-full"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Agregar Proveedor
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild className="cursor-pointer">
-                      <Link
-                        href="/dashboard/mis-eventos"
-                        className="w-full"
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        Mis Eventos
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="cursor-pointer">
-                      <Link
-                        href="/dashboard/agregar-evento"
-                        className="w-full"
-                      >
-                        <CalendarPlus className="mr-2 h-4 w-4" />
-                        Agregar Evento
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/dashboard" className="w-full">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Mi Dashboard
+                    </Link>
+                  </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -379,17 +350,17 @@ export function Navbar() {
                     <Avatar className="h-12 w-12 shadow-sm">
                       <AvatarImage src={user.user_metadata?.avatar_url} />
                       <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold capitalize font-aller">
-                        {getInitials(user.email || "")}
+                        {getNameInitials(shownName)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold capitalize tracking-wide">
-                        {user.email?.split("@")[0]}
+                        {shownName}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {profile?.role === "admin"
                           ? "Administrador"
-                          : "Usuario"}
+                          : "Mamá"}
                       </span>
                     </div>
                   </div>
@@ -407,24 +378,14 @@ export function Navbar() {
                     </>
                   )}
                   {profile?.role !== "admin" && (
-                    <>
-                      <Link
-                        href="/dashboard/mis-proveedores"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all hover:bg-accent/50 hover:text-primary"
-                      >
-                        <ShoppingBag className="h-5 w-5" />
-                        Mis Proveedores
-                      </Link>
-                      <Link
-                        href="/dashboard/agregar-proveedor"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all hover:bg-accent/50 hover:text-primary"
-                      >
-                        <Plus className="h-5 w-5" />
-                        Agregar Proveedor
-                      </Link>
-                    </>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-all hover:bg-accent/50 hover:text-primary"
+                    >
+                      <LayoutDashboard className="h-5 w-5" />
+                      Mi Dashboard
+                    </Link>
                   )}
                   <Separator className="my-4" />
                   <button
@@ -466,7 +427,16 @@ export function Navbar() {
       {/* Login Modal */}
       <LoginModal open={loginModalOpen} onOpenChange={setLoginModalOpen} />
       {/* Account Modal */}
-      {user && <AccountDialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen} user={user} role={profile?.role ?? null} />}
+      {user && (
+        <AccountDialog
+          open={accountDialogOpen}
+          onOpenChange={setAccountDialogOpen}
+          user={user}
+          role={profile?.role ?? null}
+          displayName={displayName}
+          onProfileUpdated={setDisplayName}
+        />
+      )}
       </nav>
     </>
   );

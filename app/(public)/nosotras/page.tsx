@@ -5,7 +5,7 @@ export default function NosotrasPage() {
   return (
     <main className="-mt-16">
       {/* ═══════════════════════ HERO ═══════════════════════ */}
-      <section className="relative flex min-h-screen items-center overflow-hidden bg-[#2e1b40]">
+      <section className="relative flex min-h-screen min-h-svh items-center overflow-hidden bg-[#2e1b40]">
         {/* Background image */}
         <Image
           src="https://res.cloudinary.com/amadero170/image/upload/f_auto,q_auto/v1778972173/mammas-assets/mammas_contacto_image.jpg"

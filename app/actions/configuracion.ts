@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { compareEs, normalizeTags, tagKey } from "@/lib/utils";
 
 export type TagItem = {
   id: string;
@@ -79,7 +81,8 @@ export async function getTags(tipo?: "provider" | "event"): Promise<{
     }
     const { data, error } = await query;
     if (error) return { success: false, tags: [], error: error.message };
-    return { success: true, tags: (data ?? []) as TagItem[] };
+    const tags = ((data ?? []) as TagItem[]).sort((a, b) => compareEs(a.nombre, b.nombre));
+    return { success: true, tags };
   } catch (err: any) {
     return { success: false, tags: [], error: err.message || "Error al obtener tags" };
   }
@@ -108,8 +111,6 @@ export async function createTag(
   return { success: true };
 }
 
-import { createAdminClient } from "@/lib/supabase/admin";
-
 export async function syncTagsToCatalog(
   tags: string[] | null | undefined,
   tipo: "provider" | "event" = "provider"
@@ -117,15 +118,35 @@ export async function syncTagsToCatalog(
   if (!tags || !tags.length) return;
   try {
     const adminSupabase = createAdminClient();
-    const cleanTags = Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean)));
-    if (!cleanTags.length) return;
+    const { data: existing } = await adminSupabase.from("tags").select("nombre").eq("tipo", tipo);
+    const existingKeys = new Set((existing ?? []).map((t) => tagKey(t.nombre)));
 
-    const records = cleanTags.map((nombre) => ({ nombre, tipo }));
+    // Solo agregamos tags que no existan ya con otra escritura (mayúsculas, acentos, espacios)
+    const records = normalizeTags(tags)
+      .filter((nombre) => !existingKeys.has(tagKey(nombre)))
+      .map((nombre) => ({ nombre, tipo }));
+    if (!records.length) return;
+
     await adminSupabase
       .from("tags")
       .upsert(records, { onConflict: "nombre,tipo", ignoreDuplicates: true });
   } catch (err) {
     console.error("Error syncing tags to catalog:", err);
+  }
+}
+
+/** Devuelve los tags limpios y con la escritura del catálogo. */
+export async function normalizeTagsWithCatalog(
+  tags: string[] | null | undefined,
+  tipo: "provider" | "event"
+): Promise<string[]> {
+  if (!tags || !tags.length) return [];
+  try {
+    const adminSupabase = createAdminClient();
+    const { data } = await adminSupabase.from("tags").select("nombre").eq("tipo", tipo);
+    return normalizeTags(tags, (data ?? []).map((t) => t.nombre));
+  } catch {
+    return normalizeTags(tags);
   }
 }
 
@@ -185,13 +206,14 @@ export async function getCategories(tipo?: "provider" | "event"): Promise<{
 }> {
   try {
     const supabase = await createClient();
-    let query = supabase.from("categories").select("*").order("orden", { ascending: true }).order("nombre", { ascending: true });
+    let query = supabase.from("categories").select("*");
     if (tipo) {
       query = query.eq("tipo", tipo);
     }
     const { data, error } = await query;
     if (error) return { success: false, categories: [], error: error.message };
-    return { success: true, categories: (data ?? []) as CategoryItem[] };
+    const categories = ((data ?? []) as CategoryItem[]).sort((a, b) => compareEs(a.nombre, b.nombre));
+    return { success: true, categories };
   } catch (err: any) {
     return { success: false, categories: [], error: err.message || "Error al obtener categorías" };
   }
@@ -261,6 +283,47 @@ export async function deleteCategory(id: string): Promise<{ success: boolean; er
   return { success: true };
 }
 
+export async function renameCategory(
+  id: string,
+  nuevoNombre: string
+): Promise<{ success: boolean; error?: string }> {
+  const { ok, supabase } = await assertAdmin();
+  if (!ok) return { success: false, error: "No autorizado" };
+
+  const trimmed = nuevoNombre.trim();
+  if (!trimmed) return { success: false, error: "El nombre es requerido" };
+
+  const { data: cat } = await supabase.from("categories").select("nombre, tipo").eq("id", id).single();
+  if (!cat) return { success: false, error: "Categoría no encontrada" };
+  if (cat.nombre === trimmed) return { success: true };
+
+  const { error } = await supabase.from("categories").update({ nombre: trimmed }).eq("id", id);
+  if (error) {
+    if (error.code === "23505") return { success: false, error: "Ya existe una categoría con ese nombre" };
+    return { success: false, error: error.message };
+  }
+
+  // Los proveedores y eventos guardan el nombre como texto: actualizar en cascada
+  const adminSupabase = createAdminClient();
+  if (cat.tipo === "provider") {
+    const { data: providers } = await adminSupabase
+      .from("providers")
+      .select("id, categorias")
+      .contains("categorias", [cat.nombre]);
+
+    for (const p of providers ?? []) {
+      const updated = Array.from(
+        new Set((p.categorias || []).map((c: string) => (c === cat.nombre ? trimmed : c)))
+      );
+      await adminSupabase.from("providers").update({ categorias: updated }).eq("id", p.id);
+    }
+  } else {
+    await adminSupabase.from("events").update({ categoria: trimmed }).eq("categoria", cat.nombre);
+  }
+
+  return { success: true };
+}
+
 /* ══════════════════════════════════════════════════════════
    ZONES ACTIONS
    ══════════════════════════════════════════════════════════ */
@@ -271,9 +334,10 @@ export async function getZones(): Promise<{
 }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.from("zones").select("*").order("nombre", { ascending: true });
+    const { data, error } = await supabase.from("zones").select("*");
     if (error) return { success: false, zones: [], error: error.message };
-    return { success: true, zones: (data ?? []) as ZoneItem[] };
+    const zones = ((data ?? []) as ZoneItem[]).sort((a, b) => compareEs(a.nombre, b.nombre));
+    return { success: true, zones };
   } catch (err: any) {
     return { success: false, zones: [], error: err.message || "Error al obtener zonas" };
   }
@@ -314,6 +378,34 @@ export async function deleteZone(id: string): Promise<{ success: boolean; error?
     await adminSupabase.from("providers").update({ zona: null }).eq("zona", zoneNombre);
     await adminSupabase.from("events").update({ zona: null }).eq("zona", zoneNombre);
   }
+
+  return { success: true };
+}
+
+export async function renameZone(
+  id: string,
+  nuevoNombre: string
+): Promise<{ success: boolean; error?: string }> {
+  const { ok, supabase } = await assertAdmin();
+  if (!ok) return { success: false, error: "No autorizado" };
+
+  const trimmed = nuevoNombre.trim();
+  if (!trimmed) return { success: false, error: "El nombre es requerido" };
+
+  const { data: zone } = await supabase.from("zones").select("nombre").eq("id", id).single();
+  if (!zone) return { success: false, error: "Zona no encontrada" };
+  if (zone.nombre === trimmed) return { success: true };
+
+  const { error } = await supabase.from("zones").update({ nombre: trimmed }).eq("id", id);
+  if (error) {
+    if (error.code === "23505") return { success: false, error: "Ya existe una zona con ese nombre" };
+    return { success: false, error: error.message };
+  }
+
+  // Los proveedores y eventos guardan el nombre como texto: actualizar en cascada
+  const adminSupabase = createAdminClient();
+  await adminSupabase.from("providers").update({ zona: trimmed }).eq("zona", zone.nombre);
+  await adminSupabase.from("events").update({ zona: trimmed }).eq("zona", zone.nombre);
 
   return { success: true };
 }

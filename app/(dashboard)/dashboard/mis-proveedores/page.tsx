@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import type { Proveedor } from "@/lib/types";
 import { listMyProviders, updateMyProvider } from "@/app/actions/proveedores";
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
+import { sortEs } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ProviderForm } from "@/components/forms/provider-form";
+import { AprobacionBadge, MotivoRechazo } from "@/components/dashboard/aprobacion-status";
+import { getCategories, getZones } from "@/app/actions/configuracion";
 
 export default function MisProveedoresPage() {
   const [q, setQ] = useState("");
@@ -26,6 +29,19 @@ export default function MisProveedoresPage() {
   const [loading, setLoading] = useState(false);
   const [providers, setProviders] = useState<Proveedor[]>([]);
   const [editingProvider, setEditingProvider] = useState<Proveedor | null>(null);
+  const [allCategories, setAllCategories] = useState<string[]>(sortEs(PROVIDER_CATEGORIAS));
+  const [allZones, setAllZones] = useState<string[]>(sortEs(PROVIDER_ZONAS));
+
+  useEffect(() => {
+    Promise.all([getCategories("provider"), getZones()]).then(([catRes, zoneRes]) => {
+      if (catRes.success && catRes.categories.length > 0) {
+        setAllCategories(catRes.categories.map((c) => c.nombre));
+      }
+      if (zoneRes.success && zoneRes.zones.length > 0) {
+        setAllZones(zoneRes.zones.map((z) => z.nombre));
+      }
+    });
+  }, []);
 
   const fetchProviders = async () => {
     setLoading(true);
@@ -67,11 +83,11 @@ export default function MisProveedoresPage() {
       <div>
         <h1 className="text-3xl font-bold">Mis Proveedores</h1>
         <p className="text-muted-foreground">
-          Tus proveedores (MVP): solo los cargados por tu cuenta.
+          Los proveedores que cargaste desde tu cuenta.
         </p>
       </div>
 
-      <div className="grid gap-3 rounded-lg border bg-background p-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 rounded-lg border bg-background p-4 sm:grid-cols-4">
         <div className="sm:col-span-2">
           <Input
             value={q}
@@ -86,7 +102,7 @@ export default function MisProveedoresPage() {
             onChange={(e) => setCategoria(e.target.value)}
           >
             <option value="">Todas las categorías</option>
-            {PROVIDER_CATEGORIAS.map((c) => (
+            {allCategories.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
@@ -100,7 +116,7 @@ export default function MisProveedoresPage() {
             onChange={(e) => setZona(e.target.value)}
           >
             <option value="">Todas las zonas</option>
-            {PROVIDER_ZONAS.map((z) => (
+            {allZones.map((z) => (
               <option key={z} value={z}>
                 {z}
               </option>
@@ -110,9 +126,9 @@ export default function MisProveedoresPage() {
 
         <div className="sm:col-span-4">
           <div className="text-sm text-muted-foreground">
-            Tip: nuevos proveedores quedan{" "}
-            <span className="font-medium">inactivos</span> y no aparecen aquí
-            hasta que un admin los active.
+            Los proveedores que agregas quedan <span className="font-medium">en revisión</span> hasta
+            que una administradora los apruebe. Te avisaremos por correo cuando se aprueben o si
+            necesitan algún cambio (revisa también tu carpeta de spam).
           </div>
         </div>
 
@@ -137,18 +153,18 @@ export default function MisProveedoresPage() {
       ) : providers.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <p className="text-muted-foreground">
-            Todavía no cargaste proveedores
+            Todavía no has cargado proveedores
           </p>
           <p className="mt-2 text-sm text-muted-foreground/70">
-            Podés crear uno desde “Agregar Proveedor”.
+            Puedes agregar uno desde “Nuevo proveedor”.
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {providers.map((p) => (
             <Card key={p.id} className="overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-lg">{p.nombre}</CardTitle>
+                <CardTitle className="text-lg break-words [overflow-wrap:anywhere]">{p.nombre}</CardTitle>
                 <div className="flex flex-wrap gap-2">
                   {p.categorias?.map((cat) => (
                     <Badge key={cat} className="bg-[#4c2f92] text-white">
@@ -161,12 +177,11 @@ export default function MisProveedoresPage() {
                     </Badge>
                   ))}
                   {p.zona ? <Badge variant="secondary">{p.zona}</Badge> : null}
-                  <Badge variant={p.is_active ? "default" : "outline"}>
-                    {p.is_active ? "Activo" : "Inactivo"}
-                  </Badge>
+                  <AprobacionBadge aprobacion={p.aprobacion} visible={p.is_active} />
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {p.aprobacion === "rechazado" && <MotivoRechazo motivo={p.motivo_rechazo} />}
                 {p.descripcion ? (
                   <p className="text-sm text-muted-foreground">
                     {p.descripcion}
@@ -182,14 +197,14 @@ export default function MisProveedoresPage() {
                   ) : null}
                 </div>
               </CardContent>
-              {!p.is_active && (
+              {p.aprobacion !== "aprobado" && (
                 <div className="px-6 pb-4 flex justify-end">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setEditingProvider(p)}
                   >
-                    Editar borrador
+                    {p.aprobacion === "rechazado" ? "Corregir y reenviar" : "Editar"}
                   </Button>
                 </div>
               )}
@@ -204,12 +219,16 @@ export default function MisProveedoresPage() {
             <DialogHeader>
               <DialogTitle>Editar Proveedor</DialogTitle>
               <DialogDescription>
-                Modificá los datos del proveedor seleccionado. Los cambios requerirán aprobación.
+                Modifica los datos del proveedor. Al guardar, quedará en revisión hasta que una administradora lo apruebe.
               </DialogDescription>
             </DialogHeader>
             <ProviderForm
               provider={editingProvider}
               onSubmit={(values) => updateMyProvider(editingProvider.id, values)}
+              successMessage={{
+                title: "Cambios guardados",
+                description: "Quedó en revisión. Te avisaremos por correo cuando se apruebe.",
+              }}
               submitLabel="Guardar Cambios"
               savingLabel="Guardando..."
               onCancel={() => setEditingProvider(null)}

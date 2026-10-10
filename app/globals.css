@@ -134,3 +134,18 @@ div[id*="cloudinary"] {
   pointer-events: auto !important;
 }
 
+
+/* Móvil: con texto menor a 16px, iOS hace zoom automático al tocar un campo y desarma la página */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Red de seguridad: nunca scroll lateral de la página (clip no rompe position: sticky) */
+html,
+body {
+  overflow-x: clip;
+}

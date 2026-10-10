@@ -42,7 +42,7 @@ interface SolicitudesTableProps {
     id: string,
     adminId: string,
     razon: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; emailSent?: boolean; warning?: string }>;
   readOnly?: boolean;
   showInviteLink?: boolean;
 }
@@ -119,7 +119,13 @@ export function SolicitudesTable({
         rechazarDialog.razon
       );
       if (result.success) {
-        toast.success("Solicitud rechazada");
+        if (result.emailSent === false) {
+          toast.warning("Solicitud rechazada", { description: result.warning });
+        } else {
+          toast.success("Solicitud rechazada", {
+            description: "Se envió un correo con el motivo al solicitante",
+          });
+        }
         setRechazarDialog({ open: false, solicitudId: null, razon: "" });
         window.location.reload();
       } else {
@@ -307,7 +313,7 @@ export function SolicitudesTable({
           <DialogHeader>
             <DialogTitle>Rechazar Solicitud</DialogTitle>
             <DialogDescription>
-              Proporciona una razón para el rechazo de esta solicitud.
+              Proporciona una razón para el rechazo. Se enviará por correo a la persona.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

@@ -3,7 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Evento } from "@/lib/types";
-import { syncTagsToCatalog } from "@/app/actions/configuracion";
+import { normalizeTagsWithCatalog, syncTagsToCatalog } from "@/app/actions/configuracion";
+import { notifyAportacionRevisada } from "@/lib/aportaciones";
 
 export type EventUpsertInput = {
   id?: string;
@@ -127,14 +128,18 @@ export async function upsertEvent(
       telefono: input.telefono || null,
       precios: input.precios || null,
       zona: input.zona || null,
-      tags: input.tags || [],
-      estado: "draft" as const,
+      tags: await normalizeTagsWithCatalog(input.tags, "event"),
+      // Lo que carga una admin queda aprobado y publicado directamente
+      estado: "publicado" as const,
+      aprobacion: "aprobado" as const,
+      revisado_por: user!.id,
+      revisado_at: new Date().toISOString(),
       creado_por: user!.id,
     };
 
     const { error } = await adminSupabase.from("events").insert(payload);
     if (error) return { success: false, error: error.message };
-    if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "event");
+    await syncTagsToCatalog(payload.tags, "event");
     return { success: true };
   }
 
@@ -156,7 +161,7 @@ export async function upsertEvent(
     telefono: input.telefono || null,
     precios: input.precios || null,
     zona: input.zona || null,
-    tags: input.tags || [],
+    tags: await normalizeTagsWithCatalog(input.tags, "event"),
   };
 
   const { error } = await adminSupabase
@@ -165,16 +170,27 @@ export async function upsertEvent(
     .eq("id", input.id);
 
   if (error) return { success: false, error: error.message };
-  if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "event");
+  await syncTagsToCatalog(payload.tags, "event");
   return { success: true };
 }
 
+/** Publicar (activo) o despublicar (inactivo) un evento ya aprobado. */
 export async function toggleEventEstado(
   id: string,
-  estado: "draft" | "publicado" | "archivado"
+  estado: "draft" | "publicado"
 ): Promise<{ success: true } | { success: false; error: string }> {
   const { ok, adminSupabase } = await assertAdmin();
   if (!ok) return { success: false, error: "No autorizado" };
+
+  const { data: event } = await adminSupabase
+    .from("events")
+    .select("aprobacion")
+    .eq("id", id)
+    .single();
+  if (!event) return { success: false, error: "Evento no encontrado" };
+  if (event.aprobacion !== "aprobado") {
+    return { success: false, error: "Primero hay que aprobar el evento" };
+  }
 
   const { error } = await adminSupabase
     .from("events")
@@ -183,6 +199,50 @@ export async function toggleEventEstado(
 
   if (error) return { success: false, error: error.message };
   return { success: true };
+}
+
+/** Aprobar o rechazar un evento pendiente. Al aprobar queda publicado. */
+export async function reviewEvent(
+  id: string,
+  decision: "aprobado" | "rechazado",
+  motivo?: string
+): Promise<{ success: true; emailSent: boolean } | { success: false; error: string }> {
+  const { ok, adminSupabase, user } = await assertAdmin();
+  if (!ok || !user) return { success: false, error: "No autorizado" };
+
+  const { data: event } = await adminSupabase
+    .from("events")
+    .select("id, titulo, creado_por")
+    .eq("id", id)
+    .single();
+  if (!event) return { success: false, error: "Evento no encontrado" };
+
+  const aprobado = decision === "aprobado";
+  const motivoLimpio = motivo?.trim() || null;
+
+  const { error } = await adminSupabase
+    .from("events")
+    .update({
+      aprobacion: decision,
+      estado: aprobado ? "publicado" : "draft",
+      motivo_rechazo: aprobado ? null : motivoLimpio,
+      revisado_por: user.id,
+      revisado_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+
+  const emailSent = await notifyAportacionRevisada({
+    creadoPor: event.creado_por,
+    revisadoPor: user.id,
+    tipo: "evento",
+    titulo: event.titulo,
+    aprobado,
+    motivo: motivoLimpio,
+  });
+
+  return { success: true, emailSent };
 }
 
 export async function listEventsPublic(
@@ -197,7 +257,8 @@ export async function listEventsPublic(
   let query = supabase
     .from("events")
     .select("*")
-    .eq("estado", "publicado");
+    .eq("estado", "publicado")
+    .eq("aprobacion", "aprobado");
 
   if (filters.categoria) query = query.eq("categoria", filters.categoria);
   if (filters.zona) query = query.eq("zona", filters.zona);
@@ -228,6 +289,7 @@ export async function listEventsPublic(
       .from("events")
       .select("*")
       .eq("estado", "publicado")
+      .eq("aprobacion", "aprobado")
       .order("fecha_inicio", { ascending: true });
 
     if (allData) {
@@ -260,8 +322,15 @@ export async function listEventsPublic(
 export async function createEventAsMamma(
   input: Omit<EventUpsertInput, "id">
 ): Promise<{ success: true } | { success: false; error: string }> {
-  const { ok, adminSupabase, user } = await assertAuth();
+  const { ok, supabase, adminSupabase, user } = await assertAuth();
   if (!ok || !user) return { success: false, error: "Debes iniciar sesión" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  const isAdmin = profile?.role === "admin";
 
   if (!input.titulo?.trim()) {
     return { success: false, error: "El título es requerido" };
@@ -293,14 +362,17 @@ export async function createEventAsMamma(
     telefono: input.telefono || null,
     precios: input.precios || null,
     zona: input.zona || null,
-    tags: input.tags || [],
-    estado: "draft" as const,
+    tags: await normalizeTagsWithCatalog(input.tags, "event"),
+    // Lo de una mamá queda pendiente de revisión; lo de una admin, aprobado y publicado
+    estado: isAdmin ? ("publicado" as const) : ("draft" as const),
+    aprobacion: isAdmin ? ("aprobado" as const) : ("pendiente" as const),
+    ...(isAdmin ? { revisado_por: user.id, revisado_at: new Date().toISOString() } : {}),
     creado_por: user.id,
   };
 
   const { error } = await adminSupabase.from("events").insert(payload);
   if (error) return { success: false, error: error.message };
-  if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "event");
+  await syncTagsToCatalog(payload.tags, "event");
   return { success: true };
 }
 
@@ -311,16 +383,16 @@ export async function updateMyEvent(
   const { ok, adminSupabase, user } = await assertAuth();
   if (!ok || !user) return { success: false, error: "Debes iniciar sesión" };
 
-  // Verify ownership and draft status (estado !== 'publicado')
+  // Solo quien lo cargó, y mientras esté pendiente o rechazado
   const { data: existing, error: getErr } = await adminSupabase
     .from("events")
-    .select("id, creado_por, estado")
+    .select("id, creado_por, aprobacion")
     .eq("id", id)
     .single();
 
   if (getErr || !existing) return { success: false, error: "Evento no encontrado" };
   if (existing.creado_por !== user.id) return { success: false, error: "No autorizado" };
-  if (existing.estado === "publicado") return { success: false, error: "Solo puedes editar eventos en estado borrador" };
+  if (existing.aprobacion === "aprobado") return { success: false, error: "Solo puedes editar eventos pendientes o rechazados" };
 
   if (!input.titulo?.trim()) {
     return { success: false, error: "El título es requerido" };
@@ -351,7 +423,10 @@ export async function updateMyEvent(
     telefono: input.telefono || null,
     precios: input.precios || null,
     zona: input.zona || null,
-    tags: input.tags || [],
+    tags: await normalizeTagsWithCatalog(input.tags, "event"),
+    // Si estaba rechazado, al corregirlo vuelve a la fila de revisión
+    aprobacion: "pendiente" as const,
+    motivo_rechazo: null,
   };
 
   const { error } = await adminSupabase
@@ -360,7 +435,7 @@ export async function updateMyEvent(
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };
-  if (payload.tags?.length) await syncTagsToCatalog(payload.tags, "event");
+  await syncTagsToCatalog(payload.tags, "event");
   return { success: true };
 }
 

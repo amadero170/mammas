@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { updatePassword } from "@/app/actions/auth";
+import { getMyProfile, updateMyProfile } from "@/app/actions/perfil";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,7 +26,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Eye, EyeOff, KeyRound, Mail, Shield } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Mail, Pencil, Phone, Shield } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const changePasswordSchema = z
@@ -45,7 +47,22 @@ interface AccountDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user: SupabaseUser;
-  role: "admin" | "user" | null;
+  role: "admin" | "mamma" | null;
+  /** Nombre a mostrar (del perfil); si falta, se usa el inicio del correo. */
+  displayName?: string;
+  /** Se llama al guardar un nombre nuevo, para actualizar el resto de la interfaz. */
+  onProfileUpdated?: (nombre: string) => void;
+}
+
+/** Iniciales a partir del nombre: "Juan Pérez" -> "JP". */
+export function getNameInitials(name: string) {
+  return name
+    .split(/[\s.@_-]+/)
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 export function AccountDialog({
@@ -53,7 +70,40 @@ export function AccountDialog({
   onOpenChange,
   user,
   role,
+  displayName,
+  onProfileUpdated,
 }: AccountDialogProps) {
+  const name = displayName || user.email?.split("@")[0] || "";
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ nombre: "", telefono: "" });
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Cargar los datos actuales al abrir
+  useEffect(() => {
+    if (!open) return;
+    getMyProfile().then((res) => {
+      if (res.success) setProfileForm(res.profile);
+    });
+  }, [open]);
+
+  async function handleSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+      const res = await updateMyProfile(profileForm);
+      if (!res.success) {
+        toast.error("No se pudieron guardar tus datos", { description: res.error });
+        return;
+      }
+      toast.success("Datos actualizados");
+      setEditingProfile(false);
+      onProfileUpdated?.(profileForm.nombre.replace(/\s+/g, " ").trim());
+    } catch {
+      toast.error("Error inesperado");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -66,16 +116,6 @@ export function AccountDialog({
       confirmPassword: "",
     },
   });
-
-  const getInitials = (email: string) => {
-    return email
-      .split("@")[0]
-      .split(".")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   const roleLabel = role === "admin" ? "Administrador" : "Mamá";
 
@@ -108,6 +148,7 @@ export function AccountDialog({
     if (!value) {
       form.reset();
       setShowPasswordForm(false);
+      setEditingProfile(false);
       setShowPassword(false);
       setShowConfirm(false);
     }
@@ -126,17 +167,23 @@ export function AccountDialog({
           <Avatar className="h-14 w-14 shadow-sm">
             <AvatarImage src={user.user_metadata?.avatar_url} />
             <AvatarFallback className="bg-[#4c2f92] text-lg font-bold text-white capitalize font-aller">
-              {getInitials(user.email || "")}
+              {getNameInitials(name)}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col gap-1 min-w-0">
-            <span className="text-base font-semibold capitalize tracking-wide truncate">
-              {user.email?.split("@")[0]}
+            <span className="text-base font-semibold tracking-wide truncate">
+              {name}
             </span>
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Mail className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="truncate">{user.email}</span>
             </div>
+            {profileForm.telefono && (
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="truncate">{profileForm.telefono}</span>
+              </div>
+            )}
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Shield className="h-3.5 w-3.5 flex-shrink-0" />
               <span>{roleLabel}</span>
@@ -145,6 +192,56 @@ export function AccountDialog({
         </div>
 
         <Separator />
+
+        {/* Edit profile section */}
+        {!editingProfile ? (
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            onClick={() => setEditingProfile(true)}
+          >
+            <Pencil className="h-4 w-4" />
+            Editar mis datos
+          </Button>
+        ) : (
+          <form onSubmit={handleSaveProfile} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="perfil-nombre" className="text-xs">Nombre</Label>
+              <Input
+                id="perfil-nombre"
+                value={profileForm.nombre}
+                onChange={(e) => setProfileForm((f) => ({ ...f, nombre: e.target.value }))}
+                placeholder="Tu nombre"
+                autoComplete="name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="perfil-telefono" className="text-xs">Teléfono (opcional)</Label>
+              <Input
+                id="perfil-telefono"
+                value={profileForm.telefono}
+                onChange={(e) => setProfileForm((f) => ({ ...f, telefono: e.target.value }))}
+                placeholder="Ej: 322 123 4567"
+                autoComplete="tel"
+                inputMode="tel"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingProfile(false)}
+                disabled={savingProfile}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" size="sm" disabled={savingProfile || profileForm.nombre.trim().length < 2}>
+                {savingProfile ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          </form>
+        )}
 
         {/* Change password section */}
         {!showPasswordForm ? (

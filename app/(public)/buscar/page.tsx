@@ -171,14 +171,14 @@ function BuscarContent() {
                   </Link>
                 </div>
 
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {providers.slice(0, 6).map((p) => (
                     <div
                       key={p.id}
-                      className="relative flex flex-col rounded-none border border-gray-300 bg-white p-6 shadow-sm"
+                      className="relative flex min-w-0 flex-col rounded-none border border-gray-300 bg-white p-6 shadow-sm"
                     >
                       {/* Header */}
-                      <div className="flex items-start gap-4">
+                      <div className="flex min-w-0 items-start gap-4">
                         <div className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 overflow-hidden relative">
                           {p.logo_url ? (
                             <Image
@@ -194,11 +194,11 @@ function BuscarContent() {
                             </span>
                           )}
                         </div>
-                        <div>
-                          <h3 className="font-aller text-xl font-bold leading-tight text-[#4c2f92]">
+                        <div className="min-w-0">
+                          <h3 className="font-aller text-xl font-bold leading-tight text-[#4c2f92] break-words [overflow-wrap:anywhere]">
                             {p.nombre}
                           </h3>
-                          <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground">
+                          <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground break-words [overflow-wrap:anywhere]">
                             {p.categorias?.length
                               ? p.categorias.join(" - ")
                               : "Categoría"}{" "}
@@ -305,7 +305,7 @@ function BuscarContent() {
                   </Link>
                 </div>
 
-                <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                   {events.slice(0, 6).map((evt) => {
                     const dateBadge = formatDateBadge(evt.fecha_inicio);
                     const horarioDisplay = evt.horario_inicio
@@ -349,7 +349,7 @@ function BuscarContent() {
                         )}
 
                         {/* Title */}
-                        <h3 className="mt-3 text-lg font-bold leading-snug text-[#2e1b40]">
+                        <h3 className="mt-3 text-lg font-bold leading-snug text-[#2e1b40] break-words [overflow-wrap:anywhere]">
                           {evt.titulo}
                         </h3>
 

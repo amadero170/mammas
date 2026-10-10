@@ -29,9 +29,10 @@ export default function AgregarProveedorPage() {
   return (
     <div className="container mx-auto space-y-6 px-4 py-8">
       <div>
-        <h1 className="text-3xl font-bold">Agregar Proveedor</h1>
+        <h1 className="text-3xl font-bold">Nuevo proveedor</h1>
         <p className="text-muted-foreground">
-          Completá estos datos y se enviará para que un admin lo active.
+          Completa estos datos y lo enviaremos a revisión. Cuando una administradora lo apruebe,
+          aparecerá en el directorio y te avisaremos por correo.
         </p>
       </div>
 
@@ -41,6 +42,10 @@ export default function AgregarProveedorPage() {
           submitLabel="Enviar"
           savingLabel="Enviando..."
           resetOnSuccess
+          successMessage={{
+            title: "¡Proveedor enviado a revisión!",
+            description: "Te avisaremos por correo cuando una administradora lo revise. Revisa también tu carpeta de spam.",
+          }}
           onCancel={() => router.push("/dashboard/mis-proveedores")}
           onSuccess={() => {
             router.push("/dashboard/mis-proveedores");

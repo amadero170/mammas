@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import Image from "next/image";
-import Link from "next/link";
+import { FloatingAddButton } from "@/components/floating-add-button";
 import { RefreshCw, FileEdit, Flag, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { listEventsPublic } from "@/app/actions/eventos";
 import { EVENT_ZONAS } from "@/lib/constants/events";
 import { EVENT_TAGS } from "@/lib/constants/event-tags";
 import { getCategories, getZones, getTags } from "@/app/actions/configuracion";
+import { sortEs, tagKey, uniqueTags } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { LoginModal } from "@/components/login-modal";
 import { SuggestChangeModal } from "@/components/suggest-change-modal";
@@ -142,8 +143,8 @@ export default function EventosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, zona]);
 
-  const [allZones, setAllZones] = useState<string[]>([...EVENT_ZONAS]);
-  const [allTags, setAllTags] = useState<string[]>([...EVENT_TAGS]);
+  const [allZones, setAllZones] = useState<string[]>(sortEs(EVENT_ZONAS));
+  const [allTags, setAllTags] = useState<string[]>(uniqueTags(EVENT_TAGS));
 
   useEffect(() => {
     async function loadDynamicOptions() {
@@ -155,7 +156,7 @@ export default function EventosPage() {
         setAllZones(zoneRes.zones.map((z) => z.nombre));
       }
       if (tagRes.success && tagRes.tags.length > 0) {
-        setAllTags(tagRes.tags.map((t) => t.nombre));
+        setAllTags(uniqueTags(tagRes.tags.map((t) => t.nombre)));
       }
     }
     loadDynamicOptions();
@@ -168,9 +169,9 @@ export default function EventosPage() {
   };
 
   const filteredTagOptions = useMemo(() => {
-    const s = tagSearch.trim().toLowerCase();
+    const s = tagKey(tagSearch);
     if (!s) return allTags;
-    return allTags.filter((t) => t.toLowerCase().includes(s));
+    return allTags.filter((t) => tagKey(t).includes(s));
   }, [tagSearch, allTags]);
 
   /* Client-side month + tag filter */
@@ -184,12 +185,14 @@ export default function EventosPage() {
     }
     if (selectedTags.length) {
       result = result.filter((evt) =>
-        selectedTags.every(
-          (tag) =>
-            evt.tags?.includes(tag) ||
-            evt.titulo.toLowerCase().includes(tag.toLowerCase()) ||
-            evt.descripcion?.toLowerCase().includes(tag.toLowerCase())
-        )
+        selectedTags.every((tag) => {
+          const key = tagKey(tag);
+          return (
+            evt.tags?.some((t) => tagKey(t) === key) ||
+            tagKey(evt.titulo).includes(key) ||
+            (evt.descripcion ? tagKey(evt.descripcion).includes(key) : false)
+          );
+        })
       );
     }
     return result;
@@ -311,19 +314,7 @@ export default function EventosPage() {
           </div>
         )}
 
-        {/* agregar + button */}
-        {user && (
-          <div className="mx-auto mt-6 flex max-w-5xl justify-end">
-            <Link href="/dashboard/agregar-evento">
-              <Button
-                variant="outline"
-                className="rounded-full border border-[#4c2f92] px-6 font-bold text-[#4c2f92] hover:bg-[#4c2f92]/5"
-              >
-                agregar +
-              </Button>
-            </Link>
-          </div>
-        )}
+        {user && <FloatingAddButton href="/dashboard/agregar-evento" label="Agregar evento" />}
       </div>
 
       {/* ── Events Body ── */}
@@ -344,7 +335,7 @@ export default function EventosPage() {
                 </h2>
 
                 {/* Events grid — same layout as Home "Próximos" */}
-                <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                   {evts.map((evt) => {
                     const dateBadge = formatDateBadgeRange(evt.fecha_inicio, evt.fecha_fin);
                     const horarioDisplay = evt.horario_inicio
@@ -387,7 +378,7 @@ export default function EventosPage() {
 
                         {/* Title & 3-dots menu */}
                         <div className="mt-3 flex items-start justify-between gap-2">
-                          <h3 className="text-lg font-bold leading-snug text-[#2e1b40]">
+                          <h3 className="min-w-0 text-lg font-bold leading-snug text-[#2e1b40] break-words [overflow-wrap:anywhere]">
                             {evt.titulo}
                           </h3>
 

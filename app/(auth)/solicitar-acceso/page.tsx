@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useState } from "react";
+import Link from "next/link";
+import { CheckCircle2, Mail } from "lucide-react";
 
 const solicitudSchema = z.object({
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -30,6 +32,7 @@ type SolicitudFormValues = z.infer<typeof solicitudSchema>;
 
 export default function SolicitarAccesoPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [enviada, setEnviada] = useState<{ email: string; remitente: string | null } | null>(null);
 
   const form = useForm<SolicitudFormValues>({
     resolver: zodResolver(solicitudSchema),
@@ -47,10 +50,7 @@ export default function SolicitarAccesoPage() {
       const result = await createSolicitud(data);
 
       if (result.success) {
-        toast.success("Solicitud enviada", {
-          description:
-            "Tu solicitud ha sido enviada correctamente. Te contactaremos pronto.",
-        });
+        setEnviada({ email: data.email, remitente: result.remitente ?? null });
         form.reset();
       } else {
         toast.error("Error al enviar solicitud", {
@@ -64,6 +64,59 @@ export default function SolicitarAccesoPage() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (enviada) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4 py-12">
+        <div className="w-full max-w-md rounded-lg border bg-background p-6 sm:p-8">
+          <div className="mb-6 text-center">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
+            <h1 className="mt-4 text-2xl font-bold">¡Recibimos tu solicitud!</h1>
+            <p className="mt-2 text-muted-foreground">
+              Gracias por querer sumarte a Mammas Bahía.
+            </p>
+          </div>
+
+          <h2 className="mb-3 font-semibold">¿Qué sigue?</h2>
+          <ol className="space-y-3 text-sm">
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#4c2f92] text-xs font-bold text-white">1</span>
+              <span>Una administradora revisará tu solicitud.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#4c2f92] text-xs font-bold text-white">2</span>
+              <span>
+                Si es aprobada, te enviaremos un correo a <strong className="break-all">{enviada.email}</strong> con
+                un enlace para crear tu contraseña.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#4c2f92] text-xs font-bold text-white">3</span>
+              <span>
+                Con tu cuenta lista podrás iniciar sesión, agregar proveedores y eventos, y calificar a los proveedores.
+              </span>
+            </li>
+          </ol>
+
+          <div className="mt-6 flex gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <Mail className="h-5 w-5 shrink-0" />
+            <p>
+              Revisa también tu carpeta de <strong>spam</strong> o <strong>promociones</strong>.
+              {enviada.remitente ? (
+                <>
+                  {" "}El correo llegará desde <strong className="break-all">{enviada.remitente}</strong>.
+                </>
+              ) : null}
+            </p>
+          </div>
+
+          <Button asChild className="mt-6 w-full">
+            <Link href="/">Volver al inicio</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -113,7 +166,7 @@ export default function SolicitarAccesoPage() {
                 <FormItem>
                   <FormLabel>Teléfono (opcional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="+54 9 11 1234-5678" {...field} />
+                    <Input placeholder="Ej: 322 123 4567" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

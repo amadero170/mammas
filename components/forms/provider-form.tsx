@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { TagAutocomplete } from "@/components/ui/tag-autocomplete";
 
-import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
+import { MAX_CATEGORIAS, PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
+import { MapsLinkField } from "@/components/forms/maps-link-field";
+import { sortEs } from "@/lib/utils";
 import { getTags, getCategories, getZones } from "@/app/actions/configuracion";
 import type { Proveedor } from "@/lib/types";
 
@@ -30,8 +32,6 @@ export type ProviderFormValues = {
   logo_url: string;
   logo_public_id: string;
 };
-
-const MAX_CATEGORIAS = 3;
 
 function emptyForm(): ProviderFormValues {
   return {
@@ -84,6 +84,8 @@ type Props = {
   onCancel?: () => void;
   /** If true, reset the form after success. */
   resetOnSuccess?: boolean;
+  /** Mensaje al guardar con éxito (por defecto: "Proveedor actualizado" / "Proveedor enviado"). */
+  successMessage?: { title: string; description?: string };
 };
 
 export function ProviderForm({
@@ -94,6 +96,7 @@ export function ProviderForm({
   onSuccess,
   onCancel,
   resetOnSuccess = false,
+  successMessage,
 }: Props) {
   const [saving, setSaving] = useState(false);
 
@@ -103,9 +106,9 @@ export function ProviderForm({
   );
 
   const [form, setForm] = useState<ProviderFormValues>(initial);
-  const [categoriesList, setCategoriesList] = useState<string[]>([...PROVIDER_CATEGORIAS]);
-  const [zonesList, setZonesList] = useState<string[]>([...PROVIDER_ZONAS]);
-  const [tagsList, setTagsList] = useState<string[]>([...PROVIDER_TAGS]);
+  const [categoriesList, setCategoriesList] = useState<string[]>(sortEs(PROVIDER_CATEGORIAS));
+  const [zonesList, setZonesList] = useState<string[]>(sortEs(PROVIDER_ZONAS));
+  const [tagsList, setTagsList] = useState<string[]>(sortEs(PROVIDER_TAGS));
 
   useEffect(() => {
     setForm(initial);
@@ -145,7 +148,11 @@ export function ProviderForm({
         toast.error("No se pudo guardar", { description: res.error });
         return;
       }
-      toast.success(provider ? "Proveedor actualizado" : "Proveedor enviado");
+      if (successMessage) {
+        toast.success(successMessage.title, { description: successMessage.description });
+      } else {
+        toast.success(provider ? "Proveedor actualizado" : "Proveedor enviado");
+      }
       if (resetOnSuccess) setForm(emptyForm());
       onSuccess?.();
     } catch {
@@ -212,7 +219,7 @@ export function ProviderForm({
         />
       </div>
 
-      {/* Categorías (máx 3) + Zona */}
+      {/* Categorías + Zona */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label>Categorías (máx {MAX_CATEGORIAS})</Label>
@@ -305,7 +312,7 @@ export function ProviderForm({
           availableTags={tagsList}
           selectedTags={form.tags}
           onChange={(tags) => setForm((f) => ({ ...f, tags }))}
-          placeholder="Escribí para buscar tags..."
+          placeholder="Escribe para buscar tags..."
         />
       </div>
 
@@ -329,25 +336,18 @@ export function ProviderForm({
         </div>
       </div>
 
-      {/* Facebook + Google Maps */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="grid gap-2">
-          <Label>Facebook</Label>
-          <Input
-            value={form.facebook}
-            onChange={(e) => set("facebook", e.target.value)}
-            placeholder="https://facebook.com/..."
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label>Link Google Maps</Label>
-          <Input
-            value={form.direccion}
-            onChange={(e) => set("direccion", e.target.value)}
-            placeholder="https://maps.google.com/..."
-          />
-        </div>
+      {/* Facebook */}
+      <div className="grid gap-2">
+        <Label>Facebook</Label>
+        <Input
+          value={form.facebook}
+          onChange={(e) => set("facebook", e.target.value)}
+          placeholder="https://facebook.com/..."
+        />
       </div>
+
+      {/* Google Maps (se guarda en la columna "direccion") */}
+      <MapsLinkField value={form.direccion} onChange={(v) => set("direccion", v)} />
 
       {/* Actions */}
       <div className="flex justify-end gap-2 pt-2">

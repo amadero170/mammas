@@ -72,3 +72,11 @@ Plataforma de directorio de proveedores construida con Next.js 15, TypeScript, T
 - Configurar Cloudinary para imágenes
 - Desarrollar páginas completas
 - Implementar funcionalidades del directorio
+
+
+
+Mejoras pendientes:
+Direccion en direccion y pin de google con validacion en el icono del pin, guardar como datos separados
+Las acciones realizadas por las admin deben ser registradas, quien las hizo y cuando
+Imagenes verticales para mobile (home contacto)
+

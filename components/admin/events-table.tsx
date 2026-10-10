@@ -13,10 +13,12 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import type { Evento, UserDetail } from "@/lib/types";
-import { toggleEventEstado } from "@/app/actions/eventos";
+import { reviewEvent, toggleEventEstado } from "@/app/actions/eventos";
 import { EventFormDialog } from "@/components/admin/event-form-dialog";
 import { UserDetailModal } from "@/components/admin/user-detail-modal";
 import { DuplicateConfirmModal } from "@/components/admin/duplicate-confirm-modal";
+import { RejectDialog } from "@/components/admin/reject-dialog";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { findEventDuplicates, type DuplicateMatch } from "@/lib/duplicate-checker";
 import { User as UserIcon, AlertTriangle } from "lucide-react";
 
@@ -25,6 +27,8 @@ type Props = {
   usersMap?: Record<string, UserDetail>;
 };
 
+type StatusFilter = "pendiente" | "publicado" | "draft" | "rechazado" | "all";
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("es-MX", {
     year: "numeric",
@@ -32,6 +36,9 @@ function formatDate(dateString: string) {
     day: "numeric",
   });
 }
+
+const isPublished = (e: Evento) => e.aprobacion === "aprobado" && e.estado === "publicado";
+const isUnpublished = (e: Evento) => e.aprobacion === "aprobado" && e.estado !== "publicado";
 
 export function EventsTable({ events, usersMap = {} }: Props) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -54,15 +61,15 @@ export function EventsTable({ events, usersMap = {} }: Props) {
     matches: [],
   });
 
-  const publishedEvents = useMemo(
-    () => events.filter((e) => e.estado === "publicado"),
-    [events]
-  );
+  const [rejectTarget, setRejectTarget] = useState<Evento | null>(null);
+  const [unpublishTarget, setUnpublishTarget] = useState<Evento | null>(null);
+
+  const publishedEvents = useMemo(() => events.filter(isPublished), [events]);
 
   const duplicatesMap = useMemo(() => {
     const map: Record<string, DuplicateMatch<Evento>[]> = {};
     for (const e of events) {
-      if (e.estado !== "publicado") {
+      if (!isPublished(e)) {
         const matches = findEventDuplicates(e, publishedEvents);
         if (matches.length > 0) map[e.id] = matches;
       }
@@ -70,36 +77,42 @@ export function EventsTable({ events, usersMap = {} }: Props) {
     return map;
   }, [events, publishedEvents]);
 
-  const [statusFilter, setStatusFilter] = useState<"all" | "publicado" | "draft" | "archivado">("all");
+  const stats = useMemo(
+    () => ({
+      total: events.length,
+      pending: events.filter((e) => e.aprobacion === "pendiente").length,
+      published: events.filter(isPublished).length,
+      unpublished: events.filter(isUnpublished).length,
+      rejected: events.filter((e) => e.aprobacion === "rechazado").length,
+    }),
+    [events]
+  );
 
-  const stats = useMemo(() => {
-    const total = events.length;
-    const published = events.filter((e) => e.estado === "publicado").length;
-    const draft = events.filter((e) => e.estado === "draft").length;
-    const archived = events.filter((e) => e.estado === "archivado").length;
-    return { total, published, draft, archived };
-  }, [events]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    stats.pending > 0 ? "pendiente" : "all"
+  );
 
   const filteredEvents = useMemo(() => {
-    if (statusFilter === "publicado") return events.filter((e) => e.estado === "publicado");
-    if (statusFilter === "draft") return events.filter((e) => e.estado === "draft");
-    if (statusFilter === "archivado") return events.filter((e) => e.estado === "archivado");
+    if (statusFilter === "pendiente") return events.filter((e) => e.aprobacion === "pendiente");
+    if (statusFilter === "publicado") return events.filter(isPublished);
+    if (statusFilter === "draft") return events.filter(isUnpublished);
+    if (statusFilter === "rechazado") return events.filter((e) => e.aprobacion === "rechazado");
     return events;
   }, [events, statusFilter]);
 
-  const onToggleState = async (id: string, next: "draft" | "publicado" | "archivado") => {
+  const run = async (id: string, action: () => Promise<{ success: boolean; error?: string; emailSent?: boolean }>, msg: string) => {
     setLoadingId(id);
     try {
-      const res = await toggleEventEstado(id, next);
+      const res = await action();
       if (!res.success) {
         toast.error("No se pudo actualizar", { description: res.error });
         return;
       }
-      let msg = "Evento actualizado";
-      if (next === "publicado") msg = "Evento publicado";
-      if (next === "draft") msg = "Evento movido a borrador";
-      if (next === "archivado") msg = "Evento archivado";
-      toast.success(msg);
+      if (res.emailSent === false) {
+        toast.warning(msg, { description: "No se pudo enviar el correo de aviso a quien lo cargó" });
+      } else {
+        toast.success(msg);
+      }
       window.location.reload();
     } catch {
       toast.error("Error inesperado");
@@ -108,56 +121,39 @@ export function EventsTable({ events, usersMap = {} }: Props) {
     }
   };
 
-  const handlePublishClick = (e: Evento) => {
+  const approve = (e: Evento) =>
+    run(e.id, () => reviewEvent(e.id, "aprobado"), "Evento aprobado y publicado");
+
+  const handleApproveClick = (e: Evento) => {
     const matches = duplicatesMap[e.id];
     if (matches && matches.length > 0) {
-      setConfirmModal({
-        open: true,
-        event: e,
-        matches,
-      });
+      setConfirmModal({ open: true, event: e, matches });
     } else {
-      onToggleState(e.id, "publicado");
+      approve(e);
     }
   };
+
+  const filterButton = (value: StatusFilter, label: string, count: number) => (
+    <Button
+      variant={statusFilter === value ? "default" : "outline"}
+      size="sm"
+      onClick={() => setStatusFilter(value)}
+      className={statusFilter === value ? "bg-[#4c2f92]" : ""}
+    >
+      {label} ({count})
+    </Button>
+  );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Status filter buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant={statusFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("all")}
-            className={statusFilter === "all" ? "bg-[#4c2f92]" : ""}
-          >
-            Todos ({stats.total})
-          </Button>
-          <Button
-            variant={statusFilter === "publicado" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("publicado")}
-            className={statusFilter === "publicado" ? "bg-[#4c2f92]" : ""}
-          >
-            Publicados ({stats.published})
-          </Button>
-          <Button
-            variant={statusFilter === "draft" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("draft")}
-            className={statusFilter === "draft" ? "bg-[#4c2f92]" : ""}
-          >
-            Borradores ({stats.draft})
-          </Button>
-          <Button
-            variant={statusFilter === "archivado" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter("archivado")}
-            className={statusFilter === "archivado" ? "bg-[#4c2f92]" : ""}
-          >
-            Archivados ({stats.archived})
-          </Button>
+          {filterButton("pendiente", "Pendientes", stats.pending)}
+          {filterButton("publicado", "Publicados", stats.published)}
+          {filterButton("draft", "Despublicados", stats.unpublished)}
+          {filterButton("rechazado", "Rechazados", stats.rejected)}
+          {filterButton("all", "Todos", stats.total)}
         </div>
 
         <Button onClick={() => setDialog({ open: true, event: null })}>
@@ -189,7 +185,7 @@ export function EventsTable({ events, usersMap = {} }: Props) {
                 const creator = e.creado_por ? usersMap[e.creado_por] : null;
                 const matches = duplicatesMap[e.id];
                 const hasDuplicates = matches && matches.length > 0;
-                const isArchived = e.estado === "archivado";
+                const loading = loadingId === e.id;
 
                 return (
                   <TableRow key={e.id}>
@@ -227,14 +223,22 @@ export function EventsTable({ events, usersMap = {} }: Props) {
                       )}
                     </TableCell>
                     <TableCell>
-                      {isArchived ? (
-                        <Badge variant="outline" className="text-gray-500 border-gray-400 bg-gray-50">
-                          Archivado
+                      {e.aprobacion === "pendiente" ? (
+                        <Badge variant="outline" className="border-amber-400 bg-amber-50 text-amber-700">
+                          Pendiente
+                        </Badge>
+                      ) : e.aprobacion === "rechazado" ? (
+                        <Badge
+                          variant="outline"
+                          className="border-red-300 bg-red-50 text-red-700"
+                          title={e.motivo_rechazo ? `Motivo: ${e.motivo_rechazo}` : undefined}
+                        >
+                          Rechazado
                         </Badge>
                       ) : e.estado === "publicado" ? (
                         <Badge variant="default">Publicado</Badge>
                       ) : (
-                        <Badge variant="outline">Borrador</Badge>
+                        <Badge variant="outline">Despublicado</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -246,64 +250,45 @@ export function EventsTable({ events, usersMap = {} }: Props) {
                         >
                           Editar
                         </Button>
-                        {isArchived ? (
+                        {e.aprobacion !== "aprobado" ? (
                           <>
                             <Button
-                              variant="secondary"
                               size="sm"
-                              disabled={loadingId === e.id}
-                              onClick={() => onToggleState(e.id, "draft")}
+                              disabled={loading}
+                              className={hasDuplicates ? "border border-amber-500 bg-amber-600 hover:bg-amber-700 text-white" : ""}
+                              onClick={() => handleApproveClick(e)}
                             >
-                              Restaurar
+                              Aprobar
                             </Button>
-                            <Button
-                              size="sm"
-                              disabled={loadingId === e.id}
-                              onClick={() => handlePublishClick(e)}
-                            >
-                              Publicar
-                            </Button>
+                            {e.aprobacion === "pendiente" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                disabled={loading}
+                                onClick={() => setRejectTarget(e)}
+                              >
+                                Rechazar
+                              </Button>
+                            )}
                           </>
                         ) : e.estado === "publicado" ? (
-                          <>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              disabled={loadingId === e.id}
-                              onClick={() => onToggleState(e.id, "draft")}
-                            >
-                              Despublicar
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                              disabled={loadingId === e.id}
-                              onClick={() => onToggleState(e.id, "archivado")}
-                            >
-                              Archivar
-                            </Button>
-                          </>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={loading}
+                            onClick={() => setUnpublishTarget(e)}
+                          >
+                            Despublicar
+                          </Button>
                         ) : (
-                          <>
-                            <Button
-                              size="sm"
-                              disabled={loadingId === e.id}
-                              className={hasDuplicates ? "border border-amber-500 bg-amber-600 hover:bg-amber-700 text-white" : ""}
-                              onClick={() => handlePublishClick(e)}
-                            >
-                              Publicar
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                              disabled={loadingId === e.id}
-                              onClick={() => onToggleState(e.id, "archivado")}
-                            >
-                              Archivar
-                            </Button>
-                          </>
+                          <Button
+                            size="sm"
+                            disabled={loading}
+                            onClick={() => run(e.id, () => toggleEventEstado(e.id, "publicado"), "Evento publicado")}
+                          >
+                            Publicar
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -329,6 +314,31 @@ export function EventsTable({ events, usersMap = {} }: Props) {
         user={selectedUser}
       />
 
+      <RejectDialog
+        open={!!rejectTarget}
+        onOpenChange={(open) => !open && setRejectTarget(null)}
+        targetType="evento"
+        targetName={rejectTarget?.titulo ?? ""}
+        loading={!!rejectTarget && loadingId === rejectTarget.id}
+        onConfirm={(motivo) => {
+          if (!rejectTarget) return;
+          run(rejectTarget.id, () => reviewEvent(rejectTarget.id, "rechazado", motivo), "Evento rechazado");
+        }}
+      />
+
+      <ConfirmActionModal
+        open={!!unpublishTarget}
+        onOpenChange={(open) => !open && setUnpublishTarget(null)}
+        title="Despublicar evento"
+        description={`"${unpublishTarget?.titulo ?? ""}" dejará de verse en la página de eventos. Podrás volver a publicarlo cuando quieras.`}
+        confirmText="Despublicar"
+        loading={!!unpublishTarget && loadingId === unpublishTarget.id}
+        onConfirm={() => {
+          if (!unpublishTarget) return;
+          run(unpublishTarget.id, () => toggleEventEstado(unpublishTarget.id, "draft"), "Evento despublicado");
+        }}
+      />
+
       {confirmModal.event && (
         <DuplicateConfirmModal
           open={confirmModal.open}
@@ -337,13 +347,10 @@ export function EventsTable({ events, usersMap = {} }: Props) {
           targetType="evento"
           matches={confirmModal.matches}
           onConfirm={() => {
-            if (confirmModal.event) {
-              onToggleState(confirmModal.event.id, "publicado");
-            }
+            if (confirmModal.event) approve(confirmModal.event);
           }}
         />
       )}
     </div>
   );
 }
-

@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { sortEs } from "@/lib/utils";
 
 export default async function UsuariosPage() {
   const supabase = await createClient();
@@ -62,7 +63,7 @@ export default async function UsuariosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {profiles.map((profile) => (
+              {sortEs(profiles, (p) => p.email).map((profile) => (
                 <TableRow key={profile.id}>
                   <TableCell className="font-mono text-sm">
                     {profile.id.slice(0, 8)}...
@@ -75,8 +76,6 @@ export default async function UsuariosPage() {
                       <Badge variant="default">Admin</Badge>
                     ) : profile.role === "mamma" ? (
                       <Badge variant="secondary">Mamma</Badge>
-                    ) : profile.role === "user" ? (
-                      <Badge variant="secondary">Usuario</Badge>
                     ) : profile.role ? (
                       <Badge variant="outline">{String(profile.role)}</Badge>
                     ) : (
