@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Tag, Layers, MapPin, Search, Pencil } from "lucide-react";
+import { Plus, Trash2, Tag, Layers, MapPin, Search, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +21,8 @@ import {
   createTag,
   deleteTag,
   renameTag,
+  getDismissedTagPairs,
+  dismissTagPair,
   getCategories,
   createCategory,
   deleteCategory,
@@ -34,7 +36,7 @@ import {
   type ZoneItem,
 } from "@/app/actions/configuracion";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
-import { closestTag } from "@/lib/utils";
+import { closestTag, tagPairKey } from "@/lib/utils";
 
 export default function ConfiguracionAdminPage() {
   const [activeTab, setActiveTab] = useState("tags");
@@ -45,6 +47,8 @@ export default function ConfiguracionAdminPage() {
   const [tagsSearch, setTagsSearch] = useState("");
   const [newTagName, setNewTagName] = useState("");
   const [loadingTags, setLoadingTags] = useState(false);
+  const [dismissedPairs, setDismissedPairs] = useState<Set<string>>(new Set());
+  const [onlySimilar, setOnlySimilar] = useState(false);
 
   // ── Categories State ──
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -62,9 +66,10 @@ export default function ConfiguracionAdminPage() {
   // Load Data
   const loadTags = async () => {
     setLoadingTags(true);
-    const res = await getTags(tagsTipo);
+    const [res, dismissedRes] = await Promise.all([getTags(tagsTipo), getDismissedTagPairs(tagsTipo)]);
     if (res.success) setTags(res.tags);
     else toast.error("Error al cargar tags", { description: res.error });
+    setDismissedPairs(new Set(dismissedRes.success ? dismissedRes.pares : []));
     setLoadingTags(false);
   };
 
@@ -244,15 +249,33 @@ export default function ConfiguracionAdminPage() {
   const similarTags = useMemo(() => {
     const map: Record<string, string> = {};
     for (const t of tags) {
-      const match = closestTag(t.nombre, tags.filter((o) => o.id !== t.id).map((o) => o.nombre));
+      const match = closestTag(
+        t.nombre,
+        tags.filter((o) => o.id !== t.id).map((o) => o.nombre),
+        dismissedPairs
+      );
       if (match) map[t.id] = match;
     }
     return map;
-  }, [tags]);
+  }, [tags, dismissedPairs]);
+
+  const handleDismissSimilar = async (nombre: string, parecido: string) => {
+    const res = await dismissTagPair(tagsTipo, nombre, parecido);
+    if (res.success) {
+      setDismissedPairs((prev) => new Set(prev).add(tagPairKey(nombre, parecido)));
+      toast.success(`No se volverá a sugerir fusionar "${nombre}" con "${parecido}"`);
+    } else {
+      toast.error("No se pudo descartar la sugerencia", { description: res.error });
+    }
+  };
 
   // Filtered lists
-  const filteredTags = tags.filter((t) =>
-    t.nombre.toLowerCase().includes(tagsSearch.toLowerCase())
+  const similarCount = Object.keys(similarTags).length;
+  const filteredTags = tags.filter(
+    (t) =>
+      t.nombre.toLowerCase().includes(tagsSearch.toLowerCase()) &&
+      // Si ya no quedan sugerencias, mostrar todos aunque el filtro siga activo
+      (!onlySimilar || similarCount === 0 || !!similarTags[t.id])
   );
   const filteredCategories = categories.filter((c) =>
     c.nombre.toLowerCase().includes(categoriesSearch.toLowerCase())
@@ -347,8 +370,20 @@ export default function ConfiguracionAdminPage() {
             </div>
           ) : (
             <div className="rounded-lg border bg-white p-4">
-              <div className="mb-2 text-xs font-semibold text-muted-foreground">
-                Total: {filteredTags.length} tags
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">
+                  Total: {filteredTags.length} tags
+                </span>
+                {(similarCount > 0 || onlySimilar) && (
+                  <Button
+                    size="sm"
+                    variant={onlySimilar ? "default" : "outline"}
+                    onClick={() => setOnlySimilar((v) => !v)}
+                    className={onlySimilar ? "bg-amber-600 hover:bg-amber-700" : "border-amber-300 text-amber-700 hover:bg-amber-50"}
+                  >
+                    {onlySimilar ? "Ver todos" : `Solo con sugerencia (${similarCount})`}
+                  </Button>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {filteredTags.map((tag) => (
@@ -369,6 +404,15 @@ export default function ConfiguracionAdminPage() {
                         title={`Parecido a "${similarTags[tag.id]}". Clic para fusionar.`}
                       >
                         ¿= {similarTags[tag.id]}?
+                      </button>
+                    )}
+                    {similarTags[tag.id] && (
+                      <button
+                        onClick={() => handleDismissSimilar(tag.nombre, similarTags[tag.id])}
+                        className="rounded-full p-1 text-amber-700 hover:bg-amber-200"
+                        title="No son lo mismo: no volver a sugerir"
+                      >
+                        <X className="h-3 w-3" />
                       </button>
                     )}
                     <button

@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { compareEs, formatTag, normalizeTags, tagKey } from "@/lib/utils";
+import { compareEs, formatTag, normalizeTags, tagKey, tagPairKey } from "@/lib/utils";
 
 export type TagItem = {
   id: string;
@@ -198,6 +198,37 @@ export async function deleteTag(id: string): Promise<{ success: boolean; error?:
     }
   }
 
+  return { success: true };
+}
+
+/** Pares de tags marcados como "no son lo mismo" (claves de tagPairKey). */
+export async function getDismissedTagPairs(
+  tipo: "provider" | "event"
+): Promise<{ success: boolean; pares: string[]; error?: string }> {
+  const { ok } = await assertAdmin();
+  if (!ok) return { success: false, pares: [], error: "No autorizado" };
+
+  const { data, error } = await createAdminClient()
+    .from("tag_sugerencias_descartadas")
+    .select("par")
+    .eq("tipo", tipo);
+  if (error) return { success: false, pares: [], error: error.message };
+  return { success: true, pares: (data ?? []).map((d) => d.par) };
+}
+
+/** Marca dos tags como distintos para que no se vuelva a sugerir fusionarlos. */
+export async function dismissTagPair(
+  tipo: "provider" | "event",
+  a: string,
+  b: string
+): Promise<{ success: boolean; error?: string }> {
+  const { ok, user } = await assertAdmin();
+  if (!ok) return { success: false, error: "No autorizado" };
+
+  const { error } = await createAdminClient()
+    .from("tag_sugerencias_descartadas")
+    .upsert({ tipo, par: tagPairKey(a, b), descartado_por: user.id }, { onConflict: "tipo,par", ignoreDuplicates: true });
+  if (error) return { success: false, error: error.message };
   return { success: true };
 }
 

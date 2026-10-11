@@ -49,20 +49,28 @@ function levenshtein(a: string, b: string) {
   return prev[b.length];
 }
 
+/** Clave de un par de tags (sin importar el orden), para guardar sugerencias descartadas. */
+export function tagPairKey(a: string, b: string) {
+  return [tagKey(a), tagKey(b)].sort().join("|");
+}
+
 /**
  * Tag del catálogo que se parece mucho al escrito (posible error de dedo), para preguntar
  * "¿Quisiste decir…?". Devuelve null si ya existe igual o si nada se parece lo suficiente.
+ * La primera letra tiene que coincidir: un error de dedo casi nunca la cambia
+ * (evita falsos parecidos como "Ballet" ~ "Taller").
  */
-export function closestTag(input: string, catalog: readonly string[]) {
+export function closestTag(input: string, catalog: readonly string[], dismissed?: ReadonlySet<string>) {
   const key = tagKey(input);
-  if (key.length < 3) return null;
-  const maxDistance = key.length <= 5 ? 1 : key.length <= 10 ? 2 : 3;
+  if (key.length < 4) return null;
+  const maxDistance = key.length <= 7 ? 1 : key.length <= 12 ? 2 : 3;
 
   let best: { tag: string; distance: number } | null = null;
   for (const tag of catalog) {
     const other = tagKey(tag);
     if (other === key) return null;
-    if (Math.abs(other.length - key.length) > maxDistance) continue;
+    if (other[0] !== key[0] || Math.abs(other.length - key.length) > maxDistance) continue;
+    if (dismissed?.has(tagPairKey(input, tag))) continue;
     const distance = levenshtein(key, other);
     if (distance <= maxDistance && (!best || distance < best.distance)) best = { tag, distance };
   }
