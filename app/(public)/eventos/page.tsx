@@ -13,7 +13,8 @@ import { listEventsPublic } from "@/app/actions/eventos";
 import { EVENT_ZONAS } from "@/lib/constants/events";
 import { EVENT_TAGS } from "@/lib/constants/event-tags";
 import { getCategories, getZones, getTags } from "@/app/actions/configuracion";
-import { sortEs, tagKey, uniqueTags } from "@/lib/utils";
+import { sharedIdFromParam, sortEs, tagKey, uniqueTags } from "@/lib/utils";
+import { SharedItemBanner } from "@/components/shared-item-banner";
 import { createClient } from "@/lib/supabase/client";
 import { LoginModal } from "@/components/login-modal";
 import { SuggestChangeModal } from "@/components/suggest-change-modal";
@@ -100,10 +101,10 @@ export default function EventosPage() {
   const [q, setQ] = useState("");
   const [mes, setMes] = useState("");
 
-  // Links compartidos llegan como /eventos?q=<título>
+  // Link compartido: /eventos?id=<uuid> muestra solo ese evento
+  const [sharedId, setSharedId] = useState<string | null>(null);
   useEffect(() => {
-    const shared = new URLSearchParams(window.location.search).get("q");
-    if (shared) setQ(shared);
+    setSharedId(sharedIdFromParam(new URLSearchParams(window.location.search).get("id")));
   }, []);
   const [zona, setZona] = useState("");
   const [tagSearch, setTagSearch] = useState("");
@@ -183,6 +184,7 @@ export default function EventosPage() {
 
   /* Client-side month + tag filter */
   const filtered = useMemo(() => {
+    if (sharedId) return events.filter((evt) => evt.id === sharedId);
     let result = events;
     if (mes) {
       result = result.filter((evt) => {
@@ -203,7 +205,7 @@ export default function EventosPage() {
       );
     }
     return result;
-  }, [events, mes, selectedTags]);
+  }, [events, mes, selectedTags, sharedId]);
 
   const grouped = useMemo(() => groupByMonth(filtered), [filtered]);
 
@@ -326,11 +328,21 @@ export default function EventosPage() {
 
       {/* ── Events Body ── */}
       <div className="container mx-auto px-4 pb-20">
+        {sharedId && !loading && (
+          <SharedItemBanner
+            what="un evento"
+            viewAllLabel="Ver todos los eventos"
+            onViewAll={() => {
+              setSharedId(null);
+              window.history.replaceState(null, "", "/eventos");
+            }}
+          />
+        )}
         {loading ? (
           <div className="py-20 text-center text-[#2e1b40]/60">Cargando eventos...</div>
         ) : filtered.length === 0 ? (
           <div className="py-20 text-center text-[#2e1b40]/60">
-            No se encontraron eventos.
+            {sharedId ? "Este evento ya no está disponible." : "No se encontraron eventos."}
           </div>
         ) : (
           <div className="mx-auto max-w-6xl space-y-14">
@@ -391,7 +403,7 @@ export default function EventosPage() {
 
                           <div className="flex shrink-0 items-center gap-1">
                             <ShareButton
-                              path={`/eventos?q=${encodeURIComponent(evt.titulo)}`}
+                              path={`/eventos?id=${evt.id}`}
                               title={evt.titulo}
                               text={`Mira este evento en Mammas Bahía: ${evt.titulo}`}
                               className="h-7 w-7 border-0 text-gray-500 hover:bg-purple-50 hover:text-[#4c2f92]"

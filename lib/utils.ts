@@ -63,3 +63,11 @@ export function isGoogleMapsUrl(value: string) {
 export function looksLikeUrl(value: string) {
   return /^\s*(https?:\/\/|www\.)|maps\.app\.goo\.gl|goo\.gl\/maps/i.test(value);
 }
+
+/**
+ * Extrae el id (uuid) de un parámetro de link compartido. Algunas apps pegan el texto
+ * del mensaje al final del link, así que se toma solo el uuid y se ignora lo demás.
+ */
+export function sharedIdFromParam(value: string | null) {
+  return value?.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0] ?? null;
+}

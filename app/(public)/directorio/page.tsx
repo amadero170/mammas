@@ -38,7 +38,8 @@ import { getProviderRatingsSummary, getMyRatings, type RatingSummary } from "@/a
 import { PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
 import { getCategories, getZones, getTags } from "@/app/actions/configuracion";
-import { sortEs, tagKey, uniqueTags } from "@/lib/utils";
+import { sharedIdFromParam, sortEs, tagKey, uniqueTags } from "@/lib/utils";
+import { SharedItemBanner } from "@/components/shared-item-banner";
 import { createClient } from "@/lib/supabase/client";
 import { RatingModal } from "@/components/rating-modal";
 import { LoginModal } from "@/components/login-modal";
@@ -55,6 +56,8 @@ function DirectorioContent() {
   const searchParams = useSearchParams();
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [categoria, setCategoria] = useState<string>(searchParams.get("categoria") ?? "");
+  // Link compartido: /directorio?id=<uuid> muestra solo ese proveedor
+  const [sharedId, setSharedId] = useState(() => sharedIdFromParam(searchParams.get("id")));
   const [zona, setZona] = useState<string>("");
   const [tagSearch, setTagSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -62,6 +65,10 @@ function DirectorioContent() {
 
   const [loading, setLoading] = useState(false);
   const [providers, setProviders] = useState<Proveedor[]>([]);
+  const visibleProviders = useMemo(
+    () => (sharedId ? providers.filter((p) => p.id === sharedId) : providers),
+    [providers, sharedId]
+  );
   const [user, setUser] = useState<{ id: string } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -321,244 +328,258 @@ function DirectorioContent() {
           <div className="py-20 text-center text-[#2e1b40]/60">
             Cargando proveedores...
           </div>
-        ) : providers.length === 0 ? (
-          <div className="py-20 text-center text-[#2e1b40]/60">
-            No se encontraron resultados.
-          </div>
         ) : (
-          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {providers.map((p) => (
-              <div
-                key={p.id}
-                className="relative flex min-w-0 flex-col rounded-none border border-gray-300 bg-white p-6 shadow-sm"
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-start gap-4">
-                    <div className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 overflow-hidden relative">
-                      {p.logo_url ? (
-                        <Image 
-                          src={p.logo_url} 
-                          alt={p.nombre} 
-                          fill
-                          className="object-cover"
-                          sizes="72px"
-                        />
-                      ) : (
-                        <span className="font-aller text-2xl font-bold text-[#4c2f92]">
-                          {p.nombre.charAt(0)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-aller text-xl font-bold leading-tight text-[#4c2f92] break-words [overflow-wrap:anywhere]">
-                        {p.nombre}
-                      </h3>
-                      <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground break-words [overflow-wrap:anywhere]">
-                        {(p.categorias?.length ? p.categorias.join(" - ") : "Categoría")} / {p.zona || "Zona"}
-                      </p>
-                      {(() => {
-                        const summary = ratingsSummary[p.id];
-                        const avg = summary?.avg_rating ?? 0;
-                        const total = summary?.total_ratings ?? 0;
-                        return (
-                          <div className="mt-2 flex items-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${
-                                  i <= Math.round(avg)
-                                    ? "fill-[#e5f34a] text-[#e5f34a]"
-                                    : "fill-gray-300 text-gray-300"
-                                }`}
-                              />
-                            ))}
-                            <span className="ml-2 text-xs font-bold text-gray-600">
-                              {total > 0 ? `${avg} (${total})` : "Sin calificaciones"}
+          <>
+            {sharedId && (
+              <SharedItemBanner
+                what="un proveedor"
+                viewAllLabel="Ver todo el directorio"
+                onViewAll={() => {
+                  setSharedId(null);
+                  window.history.replaceState(null, "", "/directorio");
+                }}
+              />
+            )}
+            {visibleProviders.length === 0 ? (
+              <div className="py-20 text-center text-[#2e1b40]/60">
+                {sharedId ? "Este proveedor ya no está disponible." : "No se encontraron resultados."}
+              </div>
+            ) : (
+              <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleProviders.map((p) => (
+                  <div
+                    key={p.id}
+                    className="relative flex min-w-0 flex-col rounded-none border border-gray-300 bg-white p-6 shadow-sm"
+                  >
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 items-start gap-4">
+                        <div className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 overflow-hidden relative">
+                          {p.logo_url ? (
+                            <Image 
+                              src={p.logo_url} 
+                              alt={p.nombre} 
+                              fill
+                              className="object-cover"
+                              sizes="72px"
+                            />
+                          ) : (
+                            <span className="font-aller text-2xl font-bold text-[#4c2f92]">
+                              {p.nombre.charAt(0)}
                             </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-aller text-xl font-bold leading-tight text-[#4c2f92] break-words [overflow-wrap:anywhere]">
+                            {p.nombre}
+                          </h3>
+                          <p className="mt-1 text-xs font-semibold uppercase text-muted-foreground break-words [overflow-wrap:anywhere]">
+                            {(p.categorias?.length ? p.categorias.join(" - ") : "Categoría")} / {p.zona || "Zona"}
+                          </p>
+                          {(() => {
+                            const summary = ratingsSummary[p.id];
+                            const avg = summary?.avg_rating ?? 0;
+                            const total = summary?.total_ratings ?? 0;
+                            return (
+                              <div className="mt-2 flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-4 w-4 ${
+                                      i <= Math.round(avg)
+                                        ? "fill-[#e5f34a] text-[#e5f34a]"
+                                        : "fill-gray-300 text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                                <span className="ml-2 text-xs font-bold text-gray-600">
+                                  {total > 0 ? `${avg} (${total})` : "Sin calificaciones"}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* 3-dots Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-gray-500 hover:text-[#4c2f92] hover:bg-purple-50 shrink-0"
+                            title="Opciones"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (!user) {
+                                setLoginModalOpen(true);
+                                return;
+                              }
+                              setSuggestTarget(p);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <FileEdit className="mr-2 h-4 w-4 text-[#4c2f92]" />
+                            Sugerir cambio
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (!user) {
+                                setLoginModalOpen(true);
+                                return;
+                              }
+                              setReportTarget(p);
+                            }}
+                            className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                          >
+                            <Flag className="mr-2 h-4 w-4" />
+                            Reportar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+
+
+                    {/* Body */}
+                    <div className="mt-6 flex-1 space-y-4">
+                      {p.descripcion && (
+                        <p className="text-sm leading-relaxed text-[#2e1b40]/80">
+                          {p.descripcion}
+                        </p>
+                      )}
+
+                      <div className="space-y-2">
+                        <div className="text-xs">
+                          <span className="font-semibold text-[#2e1b40]">
+                            Teléfono:
+                          </span>{" "}
+                          <span className="text-[#2e1b40]/80">
+                            {p.telefono || "—"}
+                          </span>
+                        </div>
+                        <div className="text-xs">
+                          <span className="font-semibold text-[#2e1b40]">
+                            Dirección:
+                          </span>{" "}
+                          {p.google_maps_link ? (
+                            <a
+                              href={ensureProtocol(p.google_maps_link)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={p.direccion || "Ver en mapa"}
+                              className="text-[#4c2f92] underline underline-offset-2 hover:text-[#3d2575] line-clamp-3 break-words [overflow-wrap:anywhere]"
+                            >
+                              {p.direccion || "Ver en mapa"}
+                            </a>
+                          ) : p.direccion ? (
+                            <span className="text-[#2e1b40]/80 line-clamp-3 break-words [overflow-wrap:anywhere]">
+                              {p.direccion}
+                            </span>
+                          ) : (
+                            <span className="text-[#2e1b40]/80">—</span>
+                          )}
+                        </div>
+                    
+                        {/* Tags & Badge */}
+                        <div className="relative mt-4 flex pt-1">
+                          <span className="mr-2 text-xs font-semibold text-[#2e1b40] pt-0.5">
+                            Tags:
+                          </span>
+                          <div className="flex flex-wrap gap-1 pr-16">
+                            {p.tags?.slice(0, 6).map((t) => (
+                              <span
+                                key={t}
+                                className="rounded-full border border-[#2e1b40] px-2.5 py-0.5 text-[10px] text-[#2e1b40]"
+                              >
+                                {t}
+                              </span>
+                            ))}
                           </div>
-                        );
-                      })()}
+                          {p.mama_owned && (
+                            <div className="absolute -right-2 -top-4">
+                              <Image
+                                src="/iconos/Badge_negocio_de_mama.png"
+                                alt="Mama Owned Business"
+                                width={46}
+                                height={46}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* 3-dots Menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full text-gray-500 hover:text-[#4c2f92] hover:bg-purple-50 shrink-0"
-                        title="Opciones"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          if (!user) {
-                            setLoginModalOpen(true);
-                            return;
-                          }
-                          setSuggestTarget(p);
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <FileEdit className="mr-2 h-4 w-4 text-[#4c2f92]" />
-                        Sugerir cambio
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          if (!user) {
-                            setLoginModalOpen(true);
-                            return;
-                          }
-                          setReportTarget(p);
-                        }}
-                        className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-                      >
-                        <Flag className="mr-2 h-4 w-4" />
-                        Reportar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                    {/* Footer Divider line */}
+                    <div className="my-5 h-px bg-[#4c2f92]/20" />
 
-
-
-                {/* Body */}
-                <div className="mt-6 flex-1 space-y-4">
-                  {p.descripcion && (
-                    <p className="text-sm leading-relaxed text-[#2e1b40]/80">
-                      {p.descripcion}
-                    </p>
-                  )}
-
-                  <div className="space-y-2">
-                    <div className="text-xs">
-                      <span className="font-semibold text-[#2e1b40]">
-                        Teléfono:
-                      </span>{" "}
-                      <span className="text-[#2e1b40]/80">
-                        {p.telefono || "—"}
-                      </span>
-                    </div>
-                    <div className="text-xs">
-                      <span className="font-semibold text-[#2e1b40]">
-                        Dirección:
-                      </span>{" "}
-                      {p.google_maps_link ? (
+                    {/* Footer Icons & CTA */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-3">
                         <a
-                          href={ensureProtocol(p.google_maps_link)}
+                          href={ensureProtocol(p.sitio_web || "")}
                           target="_blank"
                           rel="noopener noreferrer"
-                          title={p.direccion || "Ver en mapa"}
-                          className="text-[#4c2f92] underline underline-offset-2 hover:text-[#3d2575] line-clamp-3 break-words [overflow-wrap:anywhere]"
+                          className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
+                            !p.sitio_web && "cursor-not-allowed opacity-30"
+                          }`}
                         >
-                          {p.direccion || "Ver en mapa"}
+                          <Globe className="h-4 w-4" />
                         </a>
-                      ) : p.direccion ? (
-                        <span className="text-[#2e1b40]/80 line-clamp-3 break-words [overflow-wrap:anywhere]">
-                          {p.direccion}
-                        </span>
-                      ) : (
-                        <span className="text-[#2e1b40]/80">—</span>
-                      )}
-                    </div>
-                    
-                    {/* Tags & Badge */}
-                    <div className="relative mt-4 flex pt-1">
-                      <span className="mr-2 text-xs font-semibold text-[#2e1b40] pt-0.5">
-                        Tags:
-                      </span>
-                      <div className="flex flex-wrap gap-1 pr-16">
-                        {p.tags?.slice(0, 6).map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full border border-[#2e1b40] px-2.5 py-0.5 text-[10px] text-[#2e1b40]"
-                          >
-                            {t}
-                          </span>
-                        ))}
+                        <a
+                          href={ensureProtocol(p.facebook || "")}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
+                            !p.facebook && "cursor-not-allowed opacity-30"
+                          }`}
+                        >
+                          <Facebook className="h-4 w-4" />
+                        </a>
+                        <a
+                          href={ensureProtocol(p.instagram || "")}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
+                            !p.instagram && "cursor-not-allowed opacity-30"
+                          }`}
+                        >
+                          <Instagram className="h-4 w-4" />
+                        </a>
+                        <ShareButton
+                          path={`/directorio?id=${p.id}`}
+                          title={p.nombre}
+                          text={`Mira a ${p.nombre} en el directorio de Mammas Bahía`}
+                        />
                       </div>
-                      {p.mama_owned && (
-                        <div className="absolute -right-2 -top-4">
-                          <Image
-                            src="/iconos/Badge_negocio_de_mama.png"
-                            alt="Mama Owned Business"
-                            width={46}
-                            height={46}
-                          />
-                        </div>
-                      )}
+                      <Button
+                        className="rounded-full bg-[#4c2f92] px-6 py-4 font-bold text-white hover:bg-[#3d2575]"
+                        onClick={() => {
+                          if (!user) {
+                            setLoginModalOpen(true);
+                            return;
+                          }
+                          if (userRole !== "mamma" && userRole !== "admin") {
+                            toast.error("Solo mamás pueden calificar");
+                            return;
+                          }
+                          setRatingTarget({ id: p.id, name: p.nombre });
+                          setRatingModalOpen(true);
+                        }}
+                      >
+                        {myRatings[p.id] ? "Editar calificación" : "Calificar"}
+                      </Button>
                     </div>
                   </div>
-                </div>
-
-                {/* Footer Divider line */}
-                <div className="my-5 h-px bg-[#4c2f92]/20" />
-
-                {/* Footer Icons & CTA */}
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-3">
-                    <a
-                      href={ensureProtocol(p.sitio_web || "")}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
-                        !p.sitio_web && "cursor-not-allowed opacity-30"
-                      }`}
-                    >
-                      <Globe className="h-4 w-4" />
-                    </a>
-                    <a
-                      href={ensureProtocol(p.facebook || "")}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
-                        !p.facebook && "cursor-not-allowed opacity-30"
-                      }`}
-                    >
-                      <Facebook className="h-4 w-4" />
-                    </a>
-                    <a
-                      href={ensureProtocol(p.instagram || "")}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
-                        !p.instagram && "cursor-not-allowed opacity-30"
-                      }`}
-                    >
-                      <Instagram className="h-4 w-4" />
-                    </a>
-                    <ShareButton
-                      path={`/directorio?q=${encodeURIComponent(p.nombre)}`}
-                      title={p.nombre}
-                      text={`Mira a ${p.nombre} en el directorio de Mammas Bahía:`}
-                    />
-                  </div>
-                  <Button
-                    className="rounded-full bg-[#4c2f92] px-6 py-4 font-bold text-white hover:bg-[#3d2575]"
-                    onClick={() => {
-                      if (!user) {
-                        setLoginModalOpen(true);
-                        return;
-                      }
-                      if (userRole !== "mamma" && userRole !== "admin") {
-                        toast.error("Solo mamás pueden calificar");
-                        return;
-                      }
-                      setRatingTarget({ id: p.id, name: p.nombre });
-                      setRatingModalOpen(true);
-                    }}
-                  >
-                    {myRatings[p.id] ? "Editar calificación" : "Calificar"}
-                  </Button>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
