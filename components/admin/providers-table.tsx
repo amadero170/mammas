@@ -72,6 +72,8 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
 
   const [rejectTarget, setRejectTarget] = useState<Proveedor | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<Proveedor | null>(null);
+  const [approveTarget, setApproveTarget] = useState<Proveedor | null>(null);
+  const [activateTarget, setActivateTarget] = useState<Proveedor | null>(null);
 
   const activeProviders = useMemo(() => providers.filter(isActive), [providers]);
 
@@ -150,9 +152,10 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
   const handleApproveClick = (p: Proveedor) => {
     const matches = duplicatesMap[p.id];
     if (matches && matches.length > 0) {
+      // El aviso de duplicados ya pide confirmación
       setConfirmModal({ open: true, provider: p, matches });
     } else {
-      approve(p);
+      setApproveTarget(p);
     }
   };
 
@@ -324,7 +327,7 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
                           <Button
                             size="sm"
                             disabled={loading}
-                            onClick={() => run(p.id, () => toggleProviderActive(p.id, true), "Proveedor activado")}
+                            onClick={() => setActivateTarget(p)}
                           >
                             Activar
                           </Button>
@@ -375,6 +378,31 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
         onConfirm={() => {
           if (!deactivateTarget) return;
           run(deactivateTarget.id, () => toggleProviderActive(deactivateTarget.id, false), "Proveedor desactivado");
+        }}
+      />
+
+      <ConfirmActionModal
+        open={!!approveTarget}
+        onOpenChange={(open) => !open && setApproveTarget(null)}
+        title="Aprobar proveedor"
+        description={`"${approveTarget?.nombre ?? ""}" se publicará en el directorio y se avisará por correo a quien lo cargó.`}
+        confirmText="Aprobar"
+        loading={!!approveTarget && loadingId === approveTarget.id}
+        onConfirm={() => {
+          if (approveTarget) approve(approveTarget);
+        }}
+      />
+
+      <ConfirmActionModal
+        open={!!activateTarget}
+        onOpenChange={(open) => !open && setActivateTarget(null)}
+        title="Activar proveedor"
+        description={`"${activateTarget?.nombre ?? ""}" volverá a verse en el directorio.`}
+        confirmText="Activar"
+        loading={!!activateTarget && loadingId === activateTarget.id}
+        onConfirm={() => {
+          if (!activateTarget) return;
+          run(activateTarget.id, () => toggleProviderActive(activateTarget.id, true), "Proveedor activado");
         }}
       />
 

@@ -71,6 +71,8 @@ export function EventsTable({ events, usersMap = {} }: Props) {
 
   const [rejectTarget, setRejectTarget] = useState<Evento | null>(null);
   const [unpublishTarget, setUnpublishTarget] = useState<Evento | null>(null);
+  const [approveTarget, setApproveTarget] = useState<Evento | null>(null);
+  const [publishTarget, setPublishTarget] = useState<Evento | null>(null);
 
   const publishedEvents = useMemo(() => events.filter(isPublished), [events]);
 
@@ -148,9 +150,10 @@ export function EventsTable({ events, usersMap = {} }: Props) {
   const handleApproveClick = (e: Evento) => {
     const matches = duplicatesMap[e.id];
     if (matches && matches.length > 0) {
+      // El aviso de duplicados ya pide confirmación
       setConfirmModal({ open: true, event: e, matches });
     } else {
-      approve(e);
+      setApproveTarget(e);
     }
   };
 
@@ -319,7 +322,7 @@ export function EventsTable({ events, usersMap = {} }: Props) {
                           <Button
                             size="sm"
                             disabled={loading}
-                            onClick={() => run(e.id, () => toggleEventEstado(e.id, "publicado"), "Evento publicado")}
+                            onClick={() => setPublishTarget(e)}
                           >
                             Publicar
                           </Button>
@@ -370,6 +373,31 @@ export function EventsTable({ events, usersMap = {} }: Props) {
         onConfirm={() => {
           if (!unpublishTarget) return;
           run(unpublishTarget.id, () => toggleEventEstado(unpublishTarget.id, "draft"), "Evento despublicado");
+        }}
+      />
+
+      <ConfirmActionModal
+        open={!!approveTarget}
+        onOpenChange={(open) => !open && setApproveTarget(null)}
+        title="Aprobar evento"
+        description={`"${approveTarget?.titulo ?? ""}" se publicará en la página de eventos y se avisará por correo a quien lo cargó.`}
+        confirmText="Aprobar"
+        loading={!!approveTarget && loadingId === approveTarget.id}
+        onConfirm={() => {
+          if (approveTarget) approve(approveTarget);
+        }}
+      />
+
+      <ConfirmActionModal
+        open={!!publishTarget}
+        onOpenChange={(open) => !open && setPublishTarget(null)}
+        title="Publicar evento"
+        description={`"${publishTarget?.titulo ?? ""}" volverá a verse en la página de eventos.`}
+        confirmText="Publicar"
+        loading={!!publishTarget && loadingId === publishTarget.id}
+        onConfirm={() => {
+          if (!publishTarget) return;
+          run(publishTarget.id, () => toggleEventEstado(publishTarget.id, "publicado"), "Evento publicado");
         }}
       />
 

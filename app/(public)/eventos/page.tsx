@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 import { LoginModal } from "@/components/login-modal";
 import { SuggestChangeModal } from "@/components/suggest-change-modal";
 import { ReportModal } from "@/components/report-modal";
+import { ShareButton } from "@/components/share-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,6 +99,12 @@ function MetaRow({ icon, text }: { icon: string; text: string }) {
 export default function EventosPage() {
   const [q, setQ] = useState("");
   const [mes, setMes] = useState("");
+
+  // Links compartidos llegan como /eventos?q=<título>
+  useEffect(() => {
+    const shared = new URLSearchParams(window.location.search).get("q");
+    if (shared) setQ(shared);
+  }, []);
   const [zona, setZona] = useState("");
   const [tagSearch, setTagSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -382,47 +389,56 @@ export default function EventosPage() {
                             {evt.titulo}
                           </h3>
 
-                          {/* 3-dots Menu */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 rounded-full text-gray-500 hover:text-[#4c2f92] hover:bg-purple-50 shrink-0"
-                                title="Opciones"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  if (!user) {
-                                    setLoginModalOpen(true);
-                                    return;
-                                  }
-                                  setSuggestTarget(evt);
-                                }}
-                                className="cursor-pointer"
-                              >
-                                <FileEdit className="mr-2 h-4 w-4 text-[#4c2f92]" />
-                                Sugerir cambio
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  if (!user) {
-                                    setLoginModalOpen(true);
-                                    return;
-                                  }
-                                  setReportTarget(evt);
-                                }}
-                                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-                              >
-                                <Flag className="mr-2 h-4 w-4" />
-                                Reportar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <ShareButton
+                              path={`/eventos?q=${encodeURIComponent(evt.titulo)}`}
+                              title={evt.titulo}
+                              text={`Mira este evento en Mammas Bahía: ${evt.titulo}`}
+                              className="h-7 w-7 border-0 text-gray-500 hover:bg-purple-50 hover:text-[#4c2f92]"
+                            />
+
+                            {/* 3-dots Menu */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-full text-gray-500 hover:text-[#4c2f92] hover:bg-purple-50 shrink-0"
+                                  title="Opciones"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (!user) {
+                                      setLoginModalOpen(true);
+                                      return;
+                                    }
+                                    setSuggestTarget(evt);
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  <FileEdit className="mr-2 h-4 w-4 text-[#4c2f92]" />
+                                  Sugerir cambio
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (!user) {
+                                      setLoginModalOpen(true);
+                                      return;
+                                    }
+                                    setReportTarget(evt);
+                                  }}
+                                  className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                                >
+                                  <Flag className="mr-2 h-4 w-4" />
+                                  Reportar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
 
                         {/* Description */}

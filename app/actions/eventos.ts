@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Evento } from "@/lib/types";
 import { normalizeTagsWithCatalog, syncTagsToCatalog } from "@/app/actions/configuracion";
 import { notifyAportacionRevisada } from "@/lib/aportaciones";
+import { tagKey } from "@/lib/utils";
 
 export type EventUpsertInput = {
   id?: string;
@@ -263,14 +264,6 @@ export async function listEventsPublic(
   if (filters.categoria) query = query.eq("categoria", filters.categoria);
   if (filters.zona) query = query.eq("zona", filters.zona);
 
-  const q = filters.q?.trim();
-  if (q) {
-    // Search across all text fields
-    query = query.or(
-      `titulo.ilike.%${q}%,descripcion.ilike.%${q}%,ubicacion.ilike.%${q}%,direccion.ilike.%${q}%,zona.ilike.%${q}%,telefono.ilike.%${q}%,precios.ilike.%${q}%,link_externo.ilike.%${q}%`
-    );
-  }
-
   const { data, error } = await query.order("fecha_inicio", { ascending: true });
   if (error) return { success: false, error: error.message };
 
@@ -282,34 +275,24 @@ export async function listEventsPublic(
     return evt.fecha_inicio >= today;
   }) as Evento[];
 
-  // If text search is active, also include events matching via tags array
+  // Búsqueda de texto sin importar mayúsculas ni acentos, en campos de texto y tags.
+  // Se filtra aquí (no en la consulta) para que comas o paréntesis en el texto no rompan el filtro.
+  const q = filters.q?.trim();
   if (q) {
-    const qLower = q.toLowerCase();
-    const { data: allData } = await supabase
-      .from("events")
-      .select("*")
-      .eq("estado", "publicado")
-      .eq("aprobacion", "aprobado")
-      .order("fecha_inicio", { ascending: true });
-
-    if (allData) {
-      const existingIds = new Set(filtered.map((e) => e.id));
-      const arrayMatches = (allData as Evento[]).filter(
-        (e) =>
-          !existingIds.has(e.id) &&
-          e.tags?.some((t: string) => t.toLowerCase().includes(qLower))
-      ).filter((evt) => {
-        // Apply same past-event filter
-        if (evt.fecha_fin) return evt.fecha_fin >= today;
-        return evt.fecha_inicio >= today;
-      }).filter((evt) => {
-        // Apply same category/zona filters
-        if (filters.categoria && evt.categoria !== filters.categoria) return false;
-        if (filters.zona && evt.zona !== filters.zona) return false;
-        return true;
-      });
-      filtered = [...filtered, ...arrayMatches];
-    }
+    const qKey = tagKey(q);
+    filtered = filtered.filter((e) =>
+      [
+        e.titulo,
+        e.descripcion,
+        e.ubicacion,
+        e.direccion,
+        e.zona,
+        e.telefono,
+        e.precios,
+        e.link_externo,
+        ...(e.tags ?? []),
+      ].some((field) => field && tagKey(field).includes(qKey))
+    );
   }
 
   return { success: true, events: filtered };

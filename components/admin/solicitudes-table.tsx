@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X, Mail, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import type { SolicitudMamma } from "@/lib/types";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 interface SolicitudesTableProps {
   solicitudes: SolicitudMamma[];
@@ -65,6 +66,7 @@ export function SolicitudesTable({
     razon: "",
   });
   const [loading, setLoading] = useState<string | null>(null);
+  const [aprobarTarget, setAprobarTarget] = useState<SolicitudMamma | null>(null);
 
   const handleAprobar = async (id: string) => {
     setLoading(id);
@@ -275,7 +277,7 @@ export function SolicitudesTable({
                       <Button
                         size="sm"
                         variant="default"
-                        onClick={() => handleAprobar(solicitud.id)}
+                        onClick={() => setAprobarTarget(solicitud)}
                         disabled={loading === solicitud.id}
                       >
                         <Check className="h-4 w-4" />
@@ -302,6 +304,18 @@ export function SolicitudesTable({
           </TableBody>
         </Table>
       </div>
+
+      <ConfirmActionModal
+        open={!!aprobarTarget}
+        onOpenChange={(open) => !open && setAprobarTarget(null)}
+        title="Aprobar solicitud"
+        description={`Se le enviará a ${aprobarTarget?.nombre ?? ""} (${aprobarTarget?.email ?? ""}) un correo con el enlace para crear su cuenta.`}
+        confirmText="Aprobar"
+        loading={!!aprobarTarget && loading === aprobarTarget.id}
+        onConfirm={() => {
+          if (aprobarTarget) handleAprobar(aprobarTarget.id);
+        }}
+      />
 
       <Dialog
         open={rechazarDialog.open}

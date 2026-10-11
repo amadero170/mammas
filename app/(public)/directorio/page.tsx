@@ -5,8 +5,9 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { FloatingAddButton } from "@/components/floating-add-button";
 import { toast } from "sonner";
-import { Globe, Facebook, Instagram, MapPin, Star, RefreshCw, FileEdit, Flag, MoreVertical } from "lucide-react";
+import { Globe, Facebook, Instagram, Star, RefreshCw, FileEdit, Flag, MoreVertical } from "lucide-react";
 import { SuggestChangeModal } from "@/components/suggest-change-modal";
+import { ShareButton } from "@/components/share-button";
 import { ReportModal } from "@/components/report-modal";
 import {
   DropdownMenu,
@@ -531,16 +532,11 @@ function DirectorioContent() {
                     >
                       <Instagram className="h-4 w-4" />
                     </a>
-                    <a
-                      href={ensureProtocol(p.google_maps_link || "")}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
-                        !p.google_maps_link && "cursor-not-allowed opacity-30"
-                      }`}
-                    >
-                      <MapPin className="h-4 w-4" />
-                    </a>
+                    <ShareButton
+                      path={`/directorio?q=${encodeURIComponent(p.nombre)}`}
+                      title={p.nombre}
+                      text={`Mira a ${p.nombre} en el directorio de Mammas Bahía:`}
+                    />
                   </div>
                   <Button
                     className="rounded-full bg-[#4c2f92] px-6 py-4 font-bold text-white hover:bg-[#3d2575]"
