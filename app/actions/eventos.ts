@@ -5,7 +5,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Evento } from "@/lib/types";
 import { normalizeTagsWithCatalog, syncTagsToCatalog } from "@/app/actions/configuracion";
 import {
-  notifyAdminsNuevaCarga,
   notifyAportacionDesactivada,
   notifyAportacionRevisada,
 } from "@/lib/aportaciones";
@@ -373,9 +372,6 @@ export async function createEventAsMamma(
   const { error } = await adminSupabase.from("events").insert(payload);
   if (error) return { success: false, error: error.message };
   await syncTagsToCatalog(payload.tags, "event");
-  if (!isAdmin) {
-    await notifyAdminsNuevaCarga({ tipo: "evento", titulo: payload.titulo, autorId: user.id });
-  }
   return { success: true };
 }
 
@@ -439,10 +435,6 @@ export async function updateMyEvent(
 
   if (error) return { success: false, error: error.message };
   await syncTagsToCatalog(payload.tags, "event");
-  // Corregido tras un rechazo: vuelve a la fila de revisión
-  if (existing.aprobacion === "rechazado") {
-    await notifyAdminsNuevaCarga({ tipo: "evento", titulo: payload.titulo, autorId: user.id, reenvio: true });
-  }
   return { success: true };
 }
 

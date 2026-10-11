@@ -93,7 +93,7 @@ function layout(saludo: string, content: string) {
     `;
 }
 
-async function send(to: string | string[], subject: string, html: string) {
+async function send(to: string, subject: string, html: string) {
   const { data, error } = await resend.emails.send({ from: fromEmail, to, subject, html });
   if (error) {
     console.error(`Error sending email "${subject}":`, error);
@@ -195,6 +195,28 @@ export async function sendAportacionRevisadaEmail({
   return send(to, subject, layout(`Hola ${escapeHtml(nombre)}`, content));
 }
 
+export async function sendSugerenciaAceptadaEmail({
+  to,
+  nombre,
+  tipo,
+  titulo,
+}: {
+  to: string;
+  nombre: string;
+  tipo: "proveedor" | "evento";
+  titulo: string;
+}) {
+  const base = siteUrl();
+  const articulo = tipo === "proveedor" ? "el proveedor" : "el evento";
+  const ruta = tipo === "proveedor" ? "directorio" : "eventos";
+
+  const content = `
+              ${paragraph(`¡Gracias por ayudar a mantener la información al día! Aceptamos el cambio que sugeriste para ${articulo} <strong>${escapeHtml(titulo)}</strong> y ya está publicado.`)}
+              ${button(`${base}/${ruta}?q=${encodeURIComponent(titulo)}`, `Ver ${articulo} →`)}`;
+
+  return send(to, `Tu sugerencia para "${titulo}" fue aceptada - Mammas Bahía`, layout(`Hola ${escapeHtml(nombre)}`, content));
+}
+
 export async function sendAportacionDesactivadaEmail({
   to,
   nombre,
@@ -219,35 +241,3 @@ export async function sendAportacionDesactivadaEmail({
   return send(to, `${articulo} "${titulo}" ya no está visible - Mammas Bahía`, layout(`Hola ${escapeHtml(nombre)}`, content));
 }
 
-/* ══════════════════════════════════════════════════════════
-   Avisos para administradoras
-   ══════════════════════════════════════════════════════════ */
-
-export type NuevaCargaTipo = "solicitud" | "proveedor" | "evento";
-
-export async function sendNuevaCargaAdminEmail({
-  to,
-  tipo,
-  titulo,
-  autor,
-  reenvio = false,
-}: {
-  to: string[];
-  tipo: NuevaCargaTipo;
-  titulo: string;
-  autor: string;
-  reenvio?: boolean;
-}) {
-  const base = siteUrl();
-  const config = {
-    solicitud: { que: "Nueva solicitud de acceso", ruta: "/admin/solicitudes", detalle: `<strong>${escapeHtml(titulo)}</strong> pidió acceso a la comunidad.` },
-    proveedor: { que: reenvio ? "Proveedor corregido" : "Nuevo proveedor", ruta: "/admin/proveedores", detalle: `${escapeHtml(autor)} ${reenvio ? "corrigió y volvió a enviar" : "cargó"} el proveedor <strong>${escapeHtml(titulo)}</strong>.` },
-    evento: { que: reenvio ? "Evento corregido" : "Nuevo evento", ruta: "/admin/eventos", detalle: `${escapeHtml(autor)} ${reenvio ? "corrigió y volvió a enviar" : "cargó"} el evento <strong>${escapeHtml(titulo)}</strong>.` },
-  }[tipo];
-
-  const content = `
-              ${paragraph(`${config.detalle} Está pendiente de revisión.`)}
-              ${button(`${base}${config.ruta}`, "Revisar en el panel →")}`;
-
-  return send(to, `${config.que} por revisar: ${titulo} - Mammas Bahía`, layout("Hola", content));
-}

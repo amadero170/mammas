@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { notifySugerenciaAceptada } from "@/lib/aportaciones";
 
 export type SuggestionItem = {
   id: string;
@@ -141,7 +142,7 @@ export async function getSuggestions(estado?: string): Promise<{
 
 export async function acceptSuggestion(
   suggestionId: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; emailSent?: boolean }> {
   try {
     const supabase = await createClient();
     const {
@@ -229,7 +230,20 @@ export async function acceptSuggestion(
 
     if (suggUpdateErr) return { success: false, error: suggUpdateErr.message };
 
-    return { success: true };
+    // Avisar a quien sugirió el cambio, con el nombre ya actualizado
+    const isProvider = suggestion.target_type === "provider";
+    const { data: target } = isProvider
+      ? await supabase.from("providers").select("nombre").eq("id", suggestion.target_id).single()
+      : await supabase.from("events").select("titulo").eq("id", suggestion.target_id).single();
+
+    const emailSent = await notifySugerenciaAceptada({
+      sugeridoPor: suggestion.user_id,
+      revisadoPor: user.id,
+      tipo: isProvider ? "proveedor" : "evento",
+      titulo: (target && ("nombre" in target ? target.nombre : target.titulo)) || "tu sugerencia",
+    });
+
+    return { success: true, emailSent };
   } catch (err: any) {
     return { success: false, error: err.message || "Error al aceptar la sugerencia" };
   }

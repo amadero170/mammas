@@ -1,10 +1,8 @@
 import { getUserDetailsMap } from "@/lib/user-utils";
-import { createAdminClient } from "@/lib/supabase/admin";
 import {
   sendAportacionDesactivadaEmail,
   sendAportacionRevisadaEmail,
-  sendNuevaCargaAdminEmail,
-  type NuevaCargaTipo,
+  sendSugerenciaAceptadaEmail,
 } from "@/lib/email/resend";
 
 /**
@@ -87,39 +85,29 @@ export async function notifyAportacionDesactivada({
   }
 }
 
-/**
- * Avisa a todas las administradoras que hay algo nuevo pendiente de revisión.
- * Nunca falla: si el correo no sale, la carga queda guardada igual.
- */
-export async function notifyAdminsNuevaCarga({
+/** Avisa por correo a quien sugirió un cambio que fue aceptado. No avisa si lo acepta quien lo sugirió. */
+export async function notifySugerenciaAceptada({
+  sugeridoPor,
+  revisadoPor,
   tipo,
   titulo,
-  autorId,
-  reenvio = false,
 }: {
-  tipo: NuevaCargaTipo;
+  sugeridoPor: string | null | undefined;
+  revisadoPor: string;
+  tipo: "proveedor" | "evento";
   titulo: string;
-  autorId?: string | null;
-  reenvio?: boolean;
-}): Promise<void> {
+}): Promise<boolean> {
+  if (!sugeridoPor || sugeridoPor === revisadoPor) return true;
+
   try {
-    const adminSupabase = createAdminClient();
-    const { data: admins } = await adminSupabase.from("profiles").select("id").eq("role", "admin");
-    const adminIds = (admins ?? []).map((a: { id: string }) => a.id);
-    if (adminIds.length === 0) return;
+    const users = await getUserDetailsMap([sugeridoPor]);
+    const user = users[sugeridoPor];
+    if (!user?.email) return false;
 
-    const users = await getUserDetailsMap(autorId ? [...adminIds, autorId] : adminIds);
-    const to = adminIds.map((id) => users[id]?.email).filter((e): e is string => !!e);
-    if (to.length === 0) return;
-
-    await sendNuevaCargaAdminEmail({
-      to,
-      tipo,
-      titulo,
-      autor: (autorId && users[autorId]?.nombre) || "Una mamá",
-      reenvio,
-    });
+    await sendSugerenciaAceptadaEmail({ to: user.email, nombre: user.nombre, tipo, titulo });
+    return true;
   } catch (err) {
-    console.error("Error notifying admins:", err);
+    console.error("Error notifying accepted suggestion:", err);
+    return false;
   }
 }

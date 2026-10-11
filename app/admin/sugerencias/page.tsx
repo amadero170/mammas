@@ -72,7 +72,13 @@ export default function SugerenciasAdminPage() {
         setActionLoadingId(id);
         const res = await acceptSuggestion(id);
         if (res.success) {
-          toast.success("Sugerencia aceptada y datos actualizados correctamente 🎉");
+          if (res.emailSent === false) {
+            toast.warning("Sugerencia aceptada y datos actualizados", {
+              description: "No se pudo enviar el correo de aviso a quien la sugirió",
+            });
+          } else {
+            toast.success("Sugerencia aceptada y datos actualizados correctamente 🎉");
+          }
           setSelectedSuggestion(null);
           loadSuggestions();
         } else {

@@ -7,7 +7,6 @@ import { normalizeTagsWithCatalog, syncTagsToCatalog } from "@/app/actions/confi
 import { MAX_CATEGORIAS } from "@/lib/constants/providers";
 import { compareEs, looksLikeUrl, tagKey } from "@/lib/utils";
 import {
-  notifyAdminsNuevaCarga,
   notifyAportacionDesactivada,
   notifyAportacionRevisada,
 } from "@/lib/aportaciones";
@@ -259,9 +258,6 @@ export async function createProviderAsMamma(
   });
   if (error) return { success: false, error: error.message };
   await syncTagsToCatalog(payload.tags, "provider");
-  if (!isAdmin) {
-    await notifyAdminsNuevaCarga({ tipo: "proveedor", titulo: payload.nombre, autorId: user.id });
-  }
   return { success: true };
 }
 
@@ -302,9 +298,6 @@ export async function updateMyProvider(
 
   if (error) return { success: false, error: error.message };
   await syncTagsToCatalog(payload.tags, "provider");
-  if (existing.aprobacion === "rechazado") {
-    await notifyAdminsNuevaCarga({ tipo: "proveedor", titulo: payload.nombre, autorId: user.id, reenvio: true });
-  }
   return { success: true };
 }
 
