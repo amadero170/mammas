@@ -185,6 +185,7 @@ export async function acceptSuggestion(
       if (datos.facebook !== undefined) payload.facebook = datos.facebook;
       if (datos.instagram !== undefined) payload.instagram = datos.instagram;
       if (datos.direccion !== undefined) payload.direccion = datos.direccion;
+      if (datos.google_maps_link !== undefined) payload.google_maps_link = datos.google_maps_link;
 
       const { error: updateErr } = await supabase
         .from("providers")

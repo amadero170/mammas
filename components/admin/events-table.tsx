@@ -20,6 +20,14 @@ import { DuplicateConfirmModal } from "@/components/admin/duplicate-confirm-moda
 import { RejectDialog } from "@/components/admin/reject-dialog";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { findEventDuplicates, type DuplicateMatch } from "@/lib/duplicate-checker";
+import { eventCompleteness } from "@/lib/completeness";
+import {
+  CompletenessBadge,
+  CompletenessFilter,
+  applyCompleteness,
+  type LevelFilter,
+  type SortMode,
+} from "@/components/admin/completeness";
 import { User as UserIcon, AlertTriangle } from "lucide-react";
 
 type Props = {
@@ -92,13 +100,26 @@ export function EventsTable({ events, usersMap = {} }: Props) {
     stats.pending > 0 ? "pendiente" : "all"
   );
 
-  const filteredEvents = useMemo(() => {
+  const byStatus = useMemo(() => {
     if (statusFilter === "pendiente") return events.filter((e) => e.aprobacion === "pendiente");
     if (statusFilter === "publicado") return events.filter(isPublished);
     if (statusFilter === "draft") return events.filter(isUnpublished);
     if (statusFilter === "rechazado") return events.filter((e) => e.aprobacion === "rechazado");
     return events;
   }, [events, statusFilter]);
+
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("default");
+
+  const scores = useMemo(
+    () => Object.fromEntries(events.map((e) => [e.id, eventCompleteness(e)])),
+    [events]
+  );
+
+  const { items: filteredEvents, counts: levelCounts } = useMemo(
+    () => applyCompleteness(byStatus, scores, levelFilter, sortMode),
+    [byStatus, scores, levelFilter, sortMode]
+  );
 
   const run = async (id: string, action: () => Promise<{ success: boolean; error?: string; emailSent?: boolean }>, msg: string) => {
     setLoadingId(id);
@@ -161,6 +182,15 @@ export function EventsTable({ events, usersMap = {} }: Props) {
         </Button>
       </div>
 
+      <CompletenessFilter
+        level={levelFilter}
+        onLevelChange={setLevelFilter}
+        sort={sortMode}
+        onSortChange={setSortMode}
+        counts={levelCounts}
+        defaultSortLabel="Por fecha"
+      />
+
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -170,13 +200,14 @@ export function EventsTable({ events, usersMap = {} }: Props) {
               <TableHead>Zona</TableHead>
               <TableHead>Cargado por</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Llenado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredEvents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   No se encontraron eventos para este filtro.
                 </TableCell>
               </TableRow>
@@ -240,6 +271,9 @@ export function EventsTable({ events, usersMap = {} }: Props) {
                       ) : (
                         <Badge variant="outline">Despublicado</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <CompletenessBadge value={scores[e.id]} />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

@@ -58,3 +58,8 @@ export function isGoogleMapsUrl(value: string) {
   if (!v) return true;
   return /^(https?:\/\/)?((www\.|maps\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)/i.test(v);
 }
+
+/** true si el texto parece un enlace (para evitar que se pegue un link en un campo de texto). */
+export function looksLikeUrl(value: string) {
+  return /^\s*(https?:\/\/|www\.)|maps\.app\.goo\.gl|goo\.gl\/maps/i.test(value);
+}

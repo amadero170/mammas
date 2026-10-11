@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Proveedor } from "@/lib/types";
 import { normalizeTagsWithCatalog, syncTagsToCatalog } from "@/app/actions/configuracion";
 import { MAX_CATEGORIAS } from "@/lib/constants/providers";
-import { compareEs, tagKey } from "@/lib/utils";
+import { compareEs, looksLikeUrl, tagKey } from "@/lib/utils";
 import { notifyAportacionRevisada } from "@/lib/aportaciones";
 
 export type ProviderUpsertInput = {
@@ -21,6 +21,7 @@ export type ProviderUpsertInput = {
   facebook?: string | null;
   instagram?: string | null;
   direccion?: string | null;
+  google_maps_link?: string | null;
   logo_url?: string | null;
   logo_public_id?: string | null;
 };
@@ -61,7 +62,8 @@ async function buildPayload(input: ProviderUpsertInput) {
     sitio_web: input.sitio_web ?? null,
     facebook: input.facebook ?? null,
     instagram: input.instagram ?? null,
-    direccion: input.direccion ?? null,
+    direccion: input.direccion?.trim() || null,
+    google_maps_link: input.google_maps_link?.trim() || null,
     logo_url: input.logo_url ?? null,
     logo_public_id: input.logo_public_id ?? null,
   };
@@ -71,6 +73,9 @@ function validate(input: ProviderUpsertInput): string | null {
   if (!input.nombre?.trim()) return "El nombre es requerido";
   if ((input.categorias?.length ?? 0) > MAX_CATEGORIAS) {
     return `Puedes elegir hasta ${MAX_CATEGORIAS} categorías`;
+  }
+  if (input.direccion && looksLikeUrl(input.direccion)) {
+    return "En dirección va el texto de la dirección; el enlace de Google Maps va en su propio campo";
   }
   return null;
 }

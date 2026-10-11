@@ -447,16 +447,20 @@ function DirectorioContent() {
                       <span className="font-semibold text-[#2e1b40]">
                         Dirección:
                       </span>{" "}
-                      {p.direccion ? (
+                      {p.google_maps_link ? (
                         <a
-                          href={ensureProtocol(p.direccion)}
+                          href={ensureProtocol(p.google_maps_link)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          title={p.direccion}
+                          title={p.direccion || "Ver en mapa"}
                           className="text-[#4c2f92] underline underline-offset-2 hover:text-[#3d2575] line-clamp-3 break-words [overflow-wrap:anywhere]"
                         >
-                          {p.direccion}
+                          {p.direccion || "Ver en mapa"}
                         </a>
+                      ) : p.direccion ? (
+                        <span className="text-[#2e1b40]/80 line-clamp-3 break-words [overflow-wrap:anywhere]">
+                          {p.direccion}
+                        </span>
                       ) : (
                         <span className="text-[#2e1b40]/80">—</span>
                       )}
@@ -528,11 +532,11 @@ function DirectorioContent() {
                       <Instagram className="h-4 w-4" />
                     </a>
                     <a
-                      href={ensureProtocol(p.direccion || "")}
+                      href={ensureProtocol(p.google_maps_link || "")}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`flex items-center justify-center h-9 w-9 rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10 ${
-                        !p.direccion && "cursor-not-allowed opacity-30"
+                        !p.google_maps_link && "cursor-not-allowed opacity-30"
                       }`}
                     >
                       <MapPin className="h-4 w-4" />

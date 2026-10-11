@@ -49,6 +49,7 @@ export function SuggestChangeModal({
         instagram: p.instagram ?? "",
         facebook: p.facebook ?? "",
         direccion: p.direccion ?? "",
+        google_maps_link: p.google_maps_link ?? "",
       });
     } else {
       const e = targetItem as Evento;
@@ -148,12 +149,22 @@ export function SuggestChangeModal({
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <Label>Dirección</Label>
-                <Input
-                  value={form.direccion || ""}
-                  onChange={(e) => setForm((f) => ({ ...f, direccion: e.target.value }))}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label>Dirección</Label>
+                  <Input
+                    value={form.direccion || ""}
+                    onChange={(e) => setForm((f) => ({ ...f, direccion: e.target.value }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Link de Google Maps</Label>
+                  <Input
+                    value={form.google_maps_link || ""}
+                    onChange={(e) => setForm((f) => ({ ...f, google_maps_link: e.target.value }))}
+                    placeholder="https://maps.app.goo.gl/..."
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

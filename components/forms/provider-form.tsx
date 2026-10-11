@@ -13,7 +13,8 @@ import { TagAutocomplete } from "@/components/ui/tag-autocomplete";
 import { MAX_CATEGORIAS, PROVIDER_CATEGORIAS, PROVIDER_ZONAS } from "@/lib/constants/providers";
 import { PROVIDER_TAGS } from "@/lib/constants/provider-tags";
 import { MapsLinkField } from "@/components/forms/maps-link-field";
-import { sortEs } from "@/lib/utils";
+import { looksLikeUrl, sortEs } from "@/lib/utils";
+import { AlertTriangle } from "lucide-react";
 import { getTags, getCategories, getZones } from "@/app/actions/configuracion";
 import type { Proveedor } from "@/lib/types";
 
@@ -29,6 +30,7 @@ export type ProviderFormValues = {
   facebook: string;
   instagram: string;
   direccion: string;
+  google_maps_link: string;
   logo_url: string;
   logo_public_id: string;
 };
@@ -46,6 +48,7 @@ function emptyForm(): ProviderFormValues {
     facebook: "",
     instagram: "",
     direccion: "",
+    google_maps_link: "",
     logo_url: "",
     logo_public_id: "",
   };
@@ -64,6 +67,7 @@ function fromProveedor(p: Proveedor): ProviderFormValues {
     facebook: p.facebook ?? "",
     instagram: p.instagram ?? "",
     direccion: p.direccion ?? "",
+    google_maps_link: p.google_maps_link ?? "",
     logo_url: p.logo_url ?? "",
     logo_public_id: p.logo_public_id ?? "",
   };
@@ -138,6 +142,12 @@ export function ProviderForm({
   const handleSubmit = async () => {
     if (!form.nombre.trim()) {
       toast.error("Falta el nombre");
+      return;
+    }
+    if (looksLikeUrl(form.direccion)) {
+      toast.error("Revisa la dirección", {
+        description: "En dirección va el texto; el enlace de Google Maps va en su propio campo.",
+      });
       return;
     }
 
@@ -346,8 +356,24 @@ export function ProviderForm({
         />
       </div>
 
-      {/* Google Maps (se guarda en la columna "direccion") */}
-      <MapsLinkField value={form.direccion} onChange={(v) => set("direccion", v)} />
+      {/* Dirección (texto) */}
+      <div className="grid gap-2">
+        <Label>Dirección</Label>
+        <Input
+          value={form.direccion}
+          onChange={(e) => set("direccion", e.target.value)}
+          placeholder="Ej: Av. Héroes de Nacozari 123, Bucerías"
+        />
+        {looksLikeUrl(form.direccion) && (
+          <p className="flex items-start gap-1.5 text-xs text-amber-700">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            Aquí va la dirección escrita. El enlace de Google Maps pégalo en el campo de abajo.
+          </p>
+        )}
+      </div>
+
+      {/* Google Maps */}
+      <MapsLinkField value={form.google_maps_link} onChange={(v) => set("google_maps_link", v)} />
 
       {/* Actions */}
       <div className="flex justify-end gap-2 pt-2">

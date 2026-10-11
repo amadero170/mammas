@@ -21,6 +21,7 @@ export default function AgregarProveedorPage() {
       facebook: values.facebook || null,
       instagram: values.instagram || null,
       direccion: values.direccion || null,
+      google_maps_link: values.google_maps_link || null,
       logo_url: values.logo_url || null,
       logo_public_id: values.logo_public_id || null,
     });

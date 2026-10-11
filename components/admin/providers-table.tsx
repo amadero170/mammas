@@ -20,6 +20,14 @@ import { DuplicateConfirmModal } from "@/components/admin/duplicate-confirm-moda
 import { RejectDialog } from "@/components/admin/reject-dialog";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { findProviderDuplicates, type DuplicateMatch } from "@/lib/duplicate-checker";
+import { providerCompleteness } from "@/lib/completeness";
+import {
+  CompletenessBadge,
+  CompletenessFilter,
+  applyCompleteness,
+  type LevelFilter,
+  type SortMode,
+} from "@/components/admin/completeness";
 import { User as UserIcon, AlertTriangle } from "lucide-react";
 
 type Props = {
@@ -94,13 +102,26 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
     stats.pending > 0 ? "pendiente" : "all"
   );
 
-  const filteredProviders = useMemo(() => {
+  const byStatus = useMemo(() => {
     if (statusFilter === "pendiente") return providers.filter((p) => p.aprobacion === "pendiente");
     if (statusFilter === "active") return providers.filter(isActive);
     if (statusFilter === "inactive") return providers.filter(isInactive);
     if (statusFilter === "rechazado") return providers.filter((p) => p.aprobacion === "rechazado");
     return providers;
   }, [providers, statusFilter]);
+
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("default");
+
+  const scores = useMemo(
+    () => Object.fromEntries(providers.map((p) => [p.id, providerCompleteness(p)])),
+    [providers]
+  );
+
+  const { items: filteredProviders, counts: levelCounts } = useMemo(
+    () => applyCompleteness(byStatus, scores, levelFilter, sortMode),
+    [byStatus, scores, levelFilter, sortMode]
+  );
 
   const run = async (id: string, action: () => Promise<{ success: boolean; error?: string; emailSent?: boolean }>, msg: string) => {
     setLoadingId(id);
@@ -163,6 +184,14 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
         </Button>
       </div>
 
+      <CompletenessFilter
+        level={levelFilter}
+        onLevelChange={setLevelFilter}
+        sort={sortMode}
+        onSortChange={setSortMode}
+        counts={levelCounts}
+      />
+
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -172,6 +201,7 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
               <TableHead>Zona</TableHead>
               <TableHead>Cargado por</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Llenado</TableHead>
               <TableHead>Actualizado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -179,7 +209,7 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
           <TableBody>
             {filteredProviders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   No se encontraron proveedores para este filtro.
                 </TableCell>
               </TableRow>
@@ -245,6 +275,9 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
                       ) : (
                         <Badge variant="outline">Inactivo</Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <CompletenessBadge value={scores[p.id]} />
                     </TableCell>
                     <TableCell>{formatDate(p.updated_at)}</TableCell>
                     <TableCell className="text-right">

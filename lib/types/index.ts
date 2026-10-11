@@ -65,7 +65,9 @@ export interface Proveedor {
   sitio_web: string | null;
   facebook: string | null;
   instagram: string | null;
+  /** Dirección en texto (no un link) */
   direccion: string | null;
+  google_maps_link: string | null;
   // Cloudinary
   logo_url: string | null;
   logo_public_id: string | null;
