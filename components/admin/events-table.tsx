@@ -18,6 +18,7 @@ import { EventFormDialog } from "@/components/admin/event-form-dialog";
 import { UserDetailModal } from "@/components/admin/user-detail-modal";
 import { DuplicateConfirmModal } from "@/components/admin/duplicate-confirm-modal";
 import { RejectDialog } from "@/components/admin/reject-dialog";
+import { DeactivateDialog } from "@/components/admin/deactivate-dialog";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { findEventDuplicates, type DuplicateMatch } from "@/lib/duplicate-checker";
 import { eventCompleteness } from "@/lib/completeness";
@@ -363,16 +364,16 @@ export function EventsTable({ events, usersMap = {} }: Props) {
         }}
       />
 
-      <ConfirmActionModal
+      <DeactivateDialog
         open={!!unpublishTarget}
         onOpenChange={(open) => !open && setUnpublishTarget(null)}
         title="Despublicar evento"
         description={`"${unpublishTarget?.titulo ?? ""}" dejará de verse en la página de eventos. Podrás volver a publicarlo cuando quieras.`}
         confirmText="Despublicar"
         loading={!!unpublishTarget && loadingId === unpublishTarget.id}
-        onConfirm={() => {
+        onConfirm={(motivo) => {
           if (!unpublishTarget) return;
-          run(unpublishTarget.id, () => toggleEventEstado(unpublishTarget.id, "draft"), "Evento despublicado");
+          run(unpublishTarget.id, () => toggleEventEstado(unpublishTarget.id, "draft", motivo), "Evento despublicado");
         }}
       />
 

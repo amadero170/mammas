@@ -18,6 +18,7 @@ import { ProviderFormDialog } from "@/components/admin/provider-form-dialog";
 import { UserDetailModal } from "@/components/admin/user-detail-modal";
 import { DuplicateConfirmModal } from "@/components/admin/duplicate-confirm-modal";
 import { RejectDialog } from "@/components/admin/reject-dialog";
+import { DeactivateDialog } from "@/components/admin/deactivate-dialog";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { findProviderDuplicates, type DuplicateMatch } from "@/lib/duplicate-checker";
 import { providerCompleteness } from "@/lib/completeness";
@@ -368,16 +369,16 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
         }}
       />
 
-      <ConfirmActionModal
+      <DeactivateDialog
         open={!!deactivateTarget}
         onOpenChange={(open) => !open && setDeactivateTarget(null)}
         title="Desactivar proveedor"
         description={`"${deactivateTarget?.nombre ?? ""}" dejará de verse en el directorio. Podrás volver a activarlo cuando quieras.`}
         confirmText="Desactivar"
         loading={!!deactivateTarget && loadingId === deactivateTarget.id}
-        onConfirm={() => {
+        onConfirm={(motivo) => {
           if (!deactivateTarget) return;
-          run(deactivateTarget.id, () => toggleProviderActive(deactivateTarget.id, false), "Proveedor desactivado");
+          run(deactivateTarget.id, () => toggleProviderActive(deactivateTarget.id, false, motivo), "Proveedor desactivado");
         }}
       />
 

@@ -12,6 +12,7 @@ import {
   type ReportItem,
 } from "@/app/actions/reports";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import { DeactivateDialog } from "@/components/admin/deactivate-dialog";
 
 export default function ReportesAdminPage() {
   const [filter, setFilter] = useState<"pending" | "resolved" | "dismissed">("pending");
@@ -50,25 +51,25 @@ export default function ReportesAdminPage() {
     action: async () => {},
   });
 
-  const handleDeactivate = (id: string, targetName?: string) => {
-    setConfirmModal({
-      open: true,
-      title: "Desactivar elemento",
-      description: `¿Desactivar/despublicar "${targetName || "este elemento"}" y dar este reporte por resuelto?`,
-      variant: "destructive",
-      action: async () => {
-        setActionLoadingId(id);
-        const res = await resolveReport(id, "deactivate_target");
-        if (res.success) {
-          toast.success("Elemento desactivado y reporte marcado como resuelto ✅");
-          loadReports();
-        } else {
-          toast.error("Error al resolver el reporte", { description: res.error });
-        }
-        setActionLoadingId(null);
-        setConfirmModal((c) => ({ ...c, open: false }));
-      },
-    });
+  const [deactivateTarget, setDeactivateTarget] = useState<ReportItem | null>(null);
+
+  const handleDeactivate = async (r: ReportItem, motivo: string) => {
+    setActionLoadingId(r.id);
+    const res = await resolveReport(r.id, "deactivate_target", motivo);
+    if (res.success) {
+      if (res.emailSent === false) {
+        toast.warning("Elemento desactivado y reporte resuelto", {
+          description: "No se pudo enviar el correo de aviso a quien lo cargó",
+        });
+      } else {
+        toast.success("Elemento desactivado y reporte marcado como resuelto ✅");
+      }
+      setDeactivateTarget(null);
+      loadReports();
+    } else {
+      toast.error("Error al resolver el reporte", { description: res.error });
+    }
+    setActionLoadingId(null);
   };
 
   const handleDismiss = (id: string) => {
@@ -221,7 +222,7 @@ export default function ReportesAdminPage() {
                     size="sm"
                     className="bg-red-600 hover:bg-red-700 text-white"
                     disabled={actionLoadingId === r.id}
-                    onClick={() => handleDeactivate(r.id, r.target_nombre)}
+                    onClick={() => setDeactivateTarget(r)}
                   >
                     <CheckCircle className="mr-1.5 h-4 w-4" />
                     Desactivar {r.target_type === "provider" ? "Proveedor" : "Evento"}
@@ -232,6 +233,18 @@ export default function ReportesAdminPage() {
           ))}
         </div>
       )}
+
+      <DeactivateDialog
+        open={!!deactivateTarget}
+        onOpenChange={(open) => !open && setDeactivateTarget(null)}
+        title={deactivateTarget?.target_type === "event" ? "Despublicar evento" : "Desactivar proveedor"}
+        description={`"${deactivateTarget?.target_nombre ?? "Este elemento"}" dejará de verse y el reporte quedará resuelto.`}
+        confirmText={deactivateTarget?.target_type === "event" ? "Despublicar" : "Desactivar"}
+        loading={!!deactivateTarget && actionLoadingId === deactivateTarget.id}
+        onConfirm={(motivo) => {
+          if (deactivateTarget) handleDeactivate(deactivateTarget, motivo);
+        }}
+      />
 
       {/* Confirm Action Modal */}
       <ConfirmActionModal

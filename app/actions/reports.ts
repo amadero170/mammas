@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { notifyAportacionDesactivada } from "@/lib/aportaciones";
 
 export type ReportItem = {
   id: string;
@@ -135,8 +136,9 @@ export async function getReports(estado?: string): Promise<{
 
 export async function resolveReport(
   reportId: string,
-  action: "dismiss" | "deactivate_target"
-): Promise<{ success: boolean; error?: string }> {
+  action: "dismiss" | "deactivate_target",
+  motivo?: string
+): Promise<{ success: boolean; error?: string; emailSent?: boolean }> {
   try {
     const supabase = await createClient();
     const {
@@ -163,17 +165,31 @@ export async function resolveReport(
 
     if (fetchErr || !report) return { success: false, error: "Reporte no encontrado" };
 
+    let emailSent: boolean | undefined;
     if (action === "deactivate_target") {
-      if (report.target_type === "provider") {
-        await supabase
-          .from("providers")
-          .update({ is_active: false, estado: "inactive", updated_at: new Date().toISOString() })
-          .eq("id", report.target_id);
-      } else {
-        await supabase
-          .from("events")
-          .update({ estado: "draft", updated_at: new Date().toISOString() })
-          .eq("id", report.target_id);
+      const isProvider = report.target_type === "provider";
+      const { data: target } = isProvider
+        ? await supabase
+            .from("providers")
+            .update({ is_active: false, estado: "inactive", updated_at: new Date().toISOString() })
+            .eq("id", report.target_id)
+            .select("nombre, creado_por")
+            .single()
+        : await supabase
+            .from("events")
+            .update({ estado: "draft", updated_at: new Date().toISOString() })
+            .eq("id", report.target_id)
+            .select("titulo, creado_por")
+            .single();
+
+      if (target) {
+        emailSent = await notifyAportacionDesactivada({
+          creadoPor: target.creado_por,
+          revisadoPor: user.id,
+          tipo: isProvider ? "proveedor" : "evento",
+          titulo: "nombre" in target ? target.nombre : target.titulo,
+          motivo: motivo?.trim() || null,
+        });
       }
     }
 
@@ -189,7 +205,7 @@ export async function resolveReport(
       .eq("id", reportId);
 
     if (updateErr) return { success: false, error: updateErr.message };
-    return { success: true };
+    return { success: true, emailSent };
   } catch (err: any) {
     return { success: false, error: err.message || "Error al resolver reporte" };
   }

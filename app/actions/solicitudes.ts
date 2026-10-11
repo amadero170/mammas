@@ -8,6 +8,7 @@ import type {
   CreateSolicitudData,
 } from "@/lib/types";
 import { sendInviteEmail, sendSolicitudRechazadaEmail } from "@/lib/email/resend";
+import { notifyAdminsNuevaCarga } from "@/lib/aportaciones";
 
 export async function createSolicitud(data: CreateSolicitudData) {
   try {
@@ -40,6 +41,8 @@ export async function createSolicitud(data: CreateSolicitudData) {
 
       return { success: false, error: error.message };
     }
+
+    await notifyAdminsNuevaCarga({ tipo: "solicitud", titulo: `${data.nombre} (${data.email})` });
 
     // Dirección desde la que llegará el correo de invitación, para mostrarla en pantalla
     const from = process.env.RESEND_FROM_EMAIL || "";

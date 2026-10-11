@@ -4,7 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Evento } from "@/lib/types";
 import { normalizeTagsWithCatalog, syncTagsToCatalog } from "@/app/actions/configuracion";
-import { notifyAportacionRevisada } from "@/lib/aportaciones";
+import {
+  notifyAdminsNuevaCarga,
+  notifyAportacionDesactivada,
+  notifyAportacionRevisada,
+} from "@/lib/aportaciones";
 import { tagKey } from "@/lib/utils";
 
 export type EventUpsertInput = {
@@ -178,14 +182,15 @@ export async function upsertEvent(
 /** Publicar (activo) o despublicar (inactivo) un evento ya aprobado. */
 export async function toggleEventEstado(
   id: string,
-  estado: "draft" | "publicado"
-): Promise<{ success: true } | { success: false; error: string }> {
-  const { ok, adminSupabase } = await assertAdmin();
-  if (!ok) return { success: false, error: "No autorizado" };
+  estado: "draft" | "publicado",
+  motivo?: string
+): Promise<{ success: true; emailSent?: boolean } | { success: false; error: string }> {
+  const { ok, adminSupabase, user } = await assertAdmin();
+  if (!ok || !user) return { success: false, error: "No autorizado" };
 
   const { data: event } = await adminSupabase
     .from("events")
-    .select("aprobacion")
+    .select("aprobacion, titulo, creado_por")
     .eq("id", id)
     .single();
   if (!event) return { success: false, error: "Evento no encontrado" };
@@ -199,6 +204,18 @@ export async function toggleEventEstado(
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };
+
+  // Al despublicar se avisa a quien lo cargó; al volver a publicar, no
+  if (estado === "draft") {
+    const emailSent = await notifyAportacionDesactivada({
+      creadoPor: event.creado_por,
+      revisadoPor: user.id,
+      tipo: "evento",
+      titulo: event.titulo,
+      motivo: motivo?.trim() || null,
+    });
+    return { success: true, emailSent };
+  }
   return { success: true };
 }
 
@@ -356,6 +373,9 @@ export async function createEventAsMamma(
   const { error } = await adminSupabase.from("events").insert(payload);
   if (error) return { success: false, error: error.message };
   await syncTagsToCatalog(payload.tags, "event");
+  if (!isAdmin) {
+    await notifyAdminsNuevaCarga({ tipo: "evento", titulo: payload.titulo, autorId: user.id });
+  }
   return { success: true };
 }
 
@@ -419,6 +439,10 @@ export async function updateMyEvent(
 
   if (error) return { success: false, error: error.message };
   await syncTagsToCatalog(payload.tags, "event");
+  // Corregido tras un rechazo: vuelve a la fila de revisión
+  if (existing.aprobacion === "rechazado") {
+    await notifyAdminsNuevaCarga({ tipo: "evento", titulo: payload.titulo, autorId: user.id, reenvio: true });
+  }
   return { success: true };
 }
 

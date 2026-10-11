@@ -6,7 +6,11 @@ import type { Proveedor } from "@/lib/types";
 import { normalizeTagsWithCatalog, syncTagsToCatalog } from "@/app/actions/configuracion";
 import { MAX_CATEGORIAS } from "@/lib/constants/providers";
 import { compareEs, looksLikeUrl, tagKey } from "@/lib/utils";
-import { notifyAportacionRevisada } from "@/lib/aportaciones";
+import {
+  notifyAdminsNuevaCarga,
+  notifyAportacionDesactivada,
+  notifyAportacionRevisada,
+} from "@/lib/aportaciones";
 
 export type ProviderUpsertInput = {
   id?: string;
@@ -180,14 +184,15 @@ export async function reviewProvider(
 /** Activar o desactivar un proveedor ya aprobado. */
 export async function toggleProviderActive(
   id: string,
-  active: boolean
-): Promise<{ success: true } | { success: false; error: string }> {
-  const { ok, supabase } = await assertAdmin();
+  active: boolean,
+  motivo?: string
+): Promise<{ success: true; emailSent?: boolean } | { success: false; error: string }> {
+  const { ok, supabase, user } = await assertAdmin();
   if (!ok) return { success: false, error: "No autorizado" };
 
   const { data: provider } = await supabase
     .from("providers")
-    .select("aprobacion")
+    .select("aprobacion, nombre, creado_por")
     .eq("id", id)
     .single();
   if (!provider) return { success: false, error: "Proveedor no encontrado" };
@@ -201,6 +206,18 @@ export async function toggleProviderActive(
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };
+
+  // Al desactivar se avisa a quien lo cargó; al reactivar, no
+  if (!active) {
+    const emailSent = await notifyAportacionDesactivada({
+      creadoPor: provider.creado_por,
+      revisadoPor: user!.id,
+      tipo: "proveedor",
+      titulo: provider.nombre,
+      motivo: motivo?.trim() || null,
+    });
+    return { success: true, emailSent };
+  }
   return { success: true };
 }
 
@@ -242,6 +259,9 @@ export async function createProviderAsMamma(
   });
   if (error) return { success: false, error: error.message };
   await syncTagsToCatalog(payload.tags, "provider");
+  if (!isAdmin) {
+    await notifyAdminsNuevaCarga({ tipo: "proveedor", titulo: payload.nombre, autorId: user.id });
+  }
   return { success: true };
 }
 
@@ -282,6 +302,9 @@ export async function updateMyProvider(
 
   if (error) return { success: false, error: error.message };
   await syncTagsToCatalog(payload.tags, "provider");
+  if (existing.aprobacion === "rechazado") {
+    await notifyAdminsNuevaCarga({ tipo: "proveedor", titulo: payload.nombre, autorId: user.id, reenvio: true });
+  }
   return { success: true };
 }
 
