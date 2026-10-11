@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Tag, Layers, MapPin, Search, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   getTags,
   createTag,
   deleteTag,
+  renameTag,
   getCategories,
   createCategory,
   deleteCategory,
@@ -33,6 +34,7 @@ import {
   type ZoneItem,
 } from "@/app/actions/configuracion";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import { closestTag } from "@/lib/utils";
 
 export default function ConfiguracionAdminPage() {
   const [activeTab, setActiveTab] = useState("tags");
@@ -198,18 +200,18 @@ export default function ConfiguracionAdminPage() {
     });
   };
 
-  // ── Rename (categorías y zonas) ──
+  // ── Rename (tags, categorías y zonas) ──
   const [renameTarget, setRenameTarget] = useState<{
-    kind: "categoria" | "zona";
+    kind: "tag" | "categoria" | "zona";
     id: string;
     nombre: string;
   } | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renaming, setRenaming] = useState(false);
 
-  const openRename = (kind: "categoria" | "zona", id: string, nombre: string) => {
+  const openRename = (kind: "tag" | "categoria" | "zona", id: string, nombre: string, value = nombre) => {
     setRenameTarget({ kind, id, nombre });
-    setRenameValue(nombre);
+    setRenameValue(value);
   };
 
   const handleRename = async (e: React.FormEvent) => {
@@ -217,19 +219,36 @@ export default function ConfiguracionAdminPage() {
     if (!renameTarget || !renameValue.trim()) return;
     setRenaming(true);
     const res =
-      renameTarget.kind === "categoria"
-        ? await renameCategory(renameTarget.id, renameValue)
-        : await renameZone(renameTarget.id, renameValue);
+      renameTarget.kind === "tag"
+        ? await renameTag(renameTarget.id, renameValue)
+        : renameTarget.kind === "categoria"
+          ? await renameCategory(renameTarget.id, renameValue)
+          : await renameZone(renameTarget.id, renameValue);
     setRenaming(false);
     if (res.success) {
-      toast.success(`"${renameTarget.nombre}" ahora se llama "${renameValue.trim()}"`);
+      toast.success(
+        "merged" in res && res.merged
+          ? `"${renameTarget.nombre}" se fusionó con "${renameValue.trim()}"`
+          : `"${renameTarget.nombre}" ahora se llama "${renameValue.trim()}"`
+      );
       setRenameTarget(null);
-      if (renameTarget.kind === "categoria") loadCategories();
+      if (renameTarget.kind === "tag") loadTags();
+      else if (renameTarget.kind === "categoria") loadCategories();
       else loadZones();
     } else {
       toast.error("No se pudo renombrar", { description: res.error });
     }
   };
+
+  // Tags que parecen un error de dedo de otro tag (ej: "Esscuela" ~ "Escuela")
+  const similarTags = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const t of tags) {
+      const match = closestTag(t.nombre, tags.filter((o) => o.id !== t.id).map((o) => o.nombre));
+      if (match) map[t.id] = match;
+    }
+    return map;
+  }, [tags]);
 
   // Filtered lists
   const filteredTags = tags.filter((t) =>
@@ -336,9 +355,29 @@ export default function ConfiguracionAdminPage() {
                   <Badge
                     key={tag.id}
                     variant="outline"
-                    className="flex items-center gap-1.5 py-1 pl-3 pr-1 text-sm bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className={`flex items-center gap-1.5 py-1 pl-3 pr-1 text-sm transition-colors ${
+                      similarTags[tag.id]
+                        ? "border-amber-300 bg-amber-50 hover:bg-amber-100"
+                        : "bg-gray-50 hover:bg-gray-100"
+                    }`}
                   >
                     <span>{tag.nombre}</span>
+                    {similarTags[tag.id] && (
+                      <button
+                        onClick={() => openRename("tag", tag.id, tag.nombre, similarTags[tag.id])}
+                        className="rounded-full px-1.5 text-xs font-normal text-amber-700 hover:bg-amber-200"
+                        title={`Parecido a "${similarTags[tag.id]}". Clic para fusionar.`}
+                      >
+                        ¿= {similarTags[tag.id]}?
+                      </button>
+                    )}
+                    <button
+                      onClick={() => openRename("tag", tag.id, tag.nombre)}
+                      className="rounded-full p-1 text-muted-foreground hover:bg-purple-100 hover:text-[#4c2f92] transition-colors"
+                      title="Renombrar o fusionar"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
                     <button
                       onClick={() => handleDeleteTag(tag.id, tag.nombre)}
                       className="ml-1 rounded-full p-1 text-muted-foreground hover:bg-red-100 hover:text-red-600 transition-colors"
@@ -530,10 +569,12 @@ export default function ConfiguracionAdminPage() {
           <form onSubmit={handleRename}>
             <DialogHeader>
               <DialogTitle>
-                Renombrar {renameTarget?.kind === "categoria" ? "categoría" : "zona"}
+                Renombrar {renameTarget?.kind === "tag" ? "tag" : renameTarget?.kind === "categoria" ? "categoría" : "zona"}
               </DialogTitle>
               <DialogDescription>
-                Se actualizará también en todos los proveedores y eventos que la usan.
+                {renameTarget?.kind === "tag"
+                  ? `"${renameTarget.nombre}" se cambiará en todos los proveedores y eventos que lo usan. Si escribes el nombre de un tag que ya existe, se fusionan en uno.`
+                  : "Se actualizará también en todos los proveedores y eventos que la usan."}
               </DialogDescription>
             </DialogHeader>
             <Input

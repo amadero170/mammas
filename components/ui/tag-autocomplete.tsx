@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { cn, cleanTag, tagKey } from "@/lib/utils";
+import { cn, cleanTag, closestTag, formatTag, tagKey } from "@/lib/utils";
 
 interface TagAutocompleteProps {
   /** All available tags to choose from */
@@ -51,6 +51,13 @@ export function TagAutocomplete({
       .slice(0, maxSuggestions);
   }, [query, availableTags, selectedTags, maxSuggestions]);
 
+  // Posible error de dedo: el texto no coincide con nada pero se parece mucho a un tag existente
+  const closeMatch = useMemo(() => {
+    if (!allowCreate || !query.trim() || suggestions.length > 0) return null;
+    const match = closestTag(query, availableTags);
+    return match && !selectedTags.some((t) => tagKey(t) === tagKey(match)) ? match : null;
+  }, [allowCreate, query, suggestions.length, availableTags, selectedTags]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -74,7 +81,7 @@ export function TagAutocomplete({
     const cleaned = cleanTag(tag);
     const key = tagKey(cleaned);
     // Si ya existe en el catálogo con otra escritura (ej: "musica" -> "Música"), usar la del catálogo
-    const canonical = availableTags.find((t) => tagKey(t) === key) ?? cleaned;
+    const canonical = formatTag(availableTags.find((t) => tagKey(t) === key) ?? cleaned);
     if (cleaned && !selectedTags.some((t) => tagKey(t) === key)) {
       onChange([...selectedTags, canonical]);
     }
@@ -98,6 +105,9 @@ export function TagAutocomplete({
       e.preventDefault();
       if (suggestions[highlightIdx]) {
         addTag(suggestions[highlightIdx]);
+      } else if (closeMatch) {
+        // Hay que elegir en el aviso "¿Quisiste decir…?"
+        setOpen(true);
       } else if (allowCreate && query.trim()) {
         addTag(query.trim());
       }
@@ -169,7 +179,35 @@ export function TagAutocomplete({
       {/* Custom creation or No results message */}
       {open && query.trim() && suggestions.length === 0 && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-2 text-sm shadow-lg">
-          {allowCreate ? (
+          {allowCreate && closeMatch ? (
+            <div className="space-y-2">
+              <p className="text-foreground">
+                ¿Quisiste decir <strong>{closeMatch}</strong>?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-full bg-[#4c2f92] px-3 py-1 text-xs font-medium text-white hover:bg-[#3d2575]"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addTag(closeMatch);
+                  }}
+                >
+                  Usar &quot;{closeMatch}&quot;
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addTag(query.trim());
+                  }}
+                >
+                  No, agregar &quot;{formatTag(query)}&quot;
+                </button>
+              </div>
+            </div>
+          ) : allowCreate ? (
             <div
               className="cursor-pointer font-medium text-[#4c2f92] hover:underline"
               onMouseDown={(e) => {
@@ -177,7 +215,7 @@ export function TagAutocomplete({
                 addTag(query.trim());
               }}
             >
-              + Agregar &quot;{query.trim()}&quot;
+              + Agregar &quot;{formatTag(query)}&quot;
             </div>
           ) : (
             <span className="text-muted-foreground">No hay tags que coincidan</span>

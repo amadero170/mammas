@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { compareEs, normalizeTags, tagKey } from "@/lib/utils";
+import { compareEs, formatTag, normalizeTags, tagKey } from "@/lib/utils";
 
 export type TagItem = {
   id: string;
@@ -95,8 +95,13 @@ export async function createTag(
   const { ok, supabase } = await assertAdmin();
   if (!ok) return { success: false, error: "No autorizado" };
 
-  const trimmed = nombre.trim();
+  const trimmed = formatTag(nombre);
   if (!trimmed) return { success: false, error: "El nombre es requerido" };
+
+  const { data: existing } = await supabase.from("tags").select("nombre").eq("tipo", tipo);
+  if ((existing ?? []).some((t) => tagKey(t.nombre) === tagKey(trimmed))) {
+    return { success: false, error: "El tag ya existe" };
+  }
 
   const { error } = await supabase.from("tags").insert({
     nombre: trimmed,
@@ -194,6 +199,50 @@ export async function deleteTag(id: string): Promise<{ success: boolean; error?:
   }
 
   return { success: true };
+}
+
+/**
+ * Renombra un tag y lo actualiza en todos los proveedores/eventos que lo usan.
+ * Si el nombre nuevo ya existe como otro tag, los fusiona en ese.
+ */
+export async function renameTag(
+  id: string,
+  nuevoNombre: string
+): Promise<{ success: boolean; error?: string; merged?: boolean }> {
+  const { ok, supabase } = await assertAdmin();
+  if (!ok) return { success: false, error: "No autorizado" };
+
+  const nombre = formatTag(nuevoNombre);
+  if (!nombre) return { success: false, error: "El nombre es requerido" };
+
+  const { data: tag } = await supabase.from("tags").select("nombre, tipo").eq("id", id).single();
+  if (!tag) return { success: false, error: "Tag no encontrado" };
+  if (tag.nombre === nombre) return { success: true };
+
+  const adminSupabase = createAdminClient();
+  const { data: catalog } = await adminSupabase.from("tags").select("id, nombre").eq("tipo", tag.tipo);
+  const target = (catalog ?? []).find((t) => t.id !== id && tagKey(t.nombre) === tagKey(nombre));
+
+  // Fusionar: el tag viejo desaparece y se usa el existente. Renombrar: se cambia el nombre.
+  const finalNombre = target ? target.nombre : nombre;
+  const { error } = target
+    ? await adminSupabase.from("tags").delete().eq("id", id)
+    : await adminSupabase.from("tags").update({ nombre: finalNombre }).eq("id", id);
+  if (error) return { success: false, error: error.message };
+
+  // Reemplazar en proveedores o eventos (se compara sin mayúsculas/acentos por si hay variantes)
+  const table = tag.tipo === "provider" ? "providers" : "events";
+  const oldKey = tagKey(tag.nombre);
+  const { data: rows } = await adminSupabase.from(table).select("id, tags").not("tags", "is", null);
+
+  for (const row of rows ?? []) {
+    const tags: string[] = row.tags ?? [];
+    if (!tags.some((t) => tagKey(t) === oldKey)) continue;
+    const updated = normalizeTags(tags.map((t) => (tagKey(t) === oldKey ? finalNombre : t)));
+    await adminSupabase.from(table).update({ tags: updated }).eq("id", row.id);
+  }
+
+  return { success: true, merged: !!target };
 }
 
 /* ══════════════════════════════════════════════════════════

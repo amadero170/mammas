@@ -31,9 +31,47 @@ export function tagKey(tag: string) {
     .toLowerCase();
 }
 
+/** Formato de tag: solo la primera letra en mayúscula. "CLASES PARTICULARES" -> "Clases particulares". */
+export function formatTag(tag: string) {
+  const cleaned = cleanTag(tag).toLocaleLowerCase("es");
+  return cleaned.charAt(0).toLocaleUpperCase("es") + cleaned.slice(1);
+}
+
+function levenshtein(a: string, b: string) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const curr = [i];
+    for (let j = 1; j <= b.length; j++) {
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = curr;
+  }
+  return prev[b.length];
+}
+
 /**
- * Limpia una lista de tags: quita espacios, elimina duplicados
- * y, si existe en el catálogo, usa la escritura del catálogo.
+ * Tag del catálogo que se parece mucho al escrito (posible error de dedo), para preguntar
+ * "¿Quisiste decir…?". Devuelve null si ya existe igual o si nada se parece lo suficiente.
+ */
+export function closestTag(input: string, catalog: readonly string[]) {
+  const key = tagKey(input);
+  if (key.length < 3) return null;
+  const maxDistance = key.length <= 5 ? 1 : key.length <= 10 ? 2 : 3;
+
+  let best: { tag: string; distance: number } | null = null;
+  for (const tag of catalog) {
+    const other = tagKey(tag);
+    if (other === key) return null;
+    if (Math.abs(other.length - key.length) > maxDistance) continue;
+    const distance = levenshtein(key, other);
+    if (distance <= maxDistance && (!best || distance < best.distance)) best = { tag, distance };
+  }
+  return best?.tag ?? null;
+}
+
+/**
+ * Limpia una lista de tags: quita espacios, elimina duplicados, usa la escritura
+ * del catálogo si existe y deja solo la primera letra en mayúscula.
  */
 export function normalizeTags(tags: readonly string[] | null | undefined, catalog: readonly string[] = []) {
   const canonical = new Map(catalog.map((t) => [tagKey(t), cleanTag(t)]));
@@ -42,7 +80,7 @@ export function normalizeTags(tags: readonly string[] | null | undefined, catalo
     const cleaned = cleanTag(raw);
     if (!cleaned) continue;
     const key = tagKey(cleaned);
-    if (!result.has(key)) result.set(key, canonical.get(key) ?? cleaned);
+    if (!result.has(key)) result.set(key, formatTag(canonical.get(key) ?? cleaned));
   }
   return Array.from(result.values());
 }
