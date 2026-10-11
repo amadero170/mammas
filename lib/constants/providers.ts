@@ -36,4 +36,4 @@ export const PROVIDER_ZONAS = [
 
 
 /** Máximo de categorías que puede tener un proveedor */
-export const MAX_CATEGORIAS = 5;
+export const MAX_CATEGORIAS = 6;

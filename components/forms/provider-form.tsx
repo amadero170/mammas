@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { SuccessDialog } from "@/components/success-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -88,7 +89,7 @@ type Props = {
   onCancel?: () => void;
   /** If true, reset the form after success. */
   resetOnSuccess?: boolean;
-  /** Mensaje al guardar con éxito (por defecto: "Proveedor actualizado" / "Proveedor enviado"). */
+  /** Si se pasa, al guardar se muestra un aviso centrado (en vez de un toast) y onSuccess corre al cerrarlo. */
   successMessage?: { title: string; description?: string };
 };
 
@@ -103,6 +104,7 @@ export function ProviderForm({
   successMessage,
 }: Props) {
   const [saving, setSaving] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
 
   const initial = useMemo(
     () => (provider ? fromProveedor(provider) : emptyForm()),
@@ -158,12 +160,13 @@ export function ProviderForm({
         toast.error("No se pudo guardar", { description: res.error });
         return;
       }
-      if (successMessage) {
-        toast.success(successMessage.title, { description: successMessage.description });
-      } else {
-        toast.success(provider ? "Proveedor actualizado" : "Proveedor enviado");
-      }
       if (resetOnSuccess) setForm(emptyForm());
+      if (successMessage) {
+        // Aviso centrado; onSuccess corre cuando la persona lo cierra
+        setSuccessOpen(true);
+        return;
+      }
+      toast.success(provider ? "Proveedor actualizado" : "Proveedor enviado");
       onSuccess?.();
     } catch {
       toast.error("Error inesperado");
@@ -386,6 +389,18 @@ export function ProviderForm({
           {saving ? savingLabel : submitLabel}
         </Button>
       </div>
+
+      {successMessage && (
+        <SuccessDialog
+          open={successOpen}
+          title={successMessage.title}
+          description={successMessage.description}
+          onClose={() => {
+            setSuccessOpen(false);
+            onSuccess?.();
+          }}
+        />
+      )}
     </div>
   );
 }
