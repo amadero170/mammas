@@ -63,7 +63,7 @@ export default async function AdminLayout({
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-1 pt-24 pb-16 flex flex-col items-center">
-        <div className="w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-6 mb-8 border-b pb-4 overflow-x-auto">
             <Link
               href="/admin/solicitudes"

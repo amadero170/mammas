@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -50,6 +51,7 @@ const isActive = (p: Proveedor) => p.aprobacion === "aprobado" && p.is_active;
 const isInactive = (p: Proveedor) => p.aprobacion === "aprobado" && !p.is_active;
 
 export function ProvidersTable({ providers, usersMap = {} }: Props) {
+  const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [dialog, setDialog] = useState<{
@@ -139,7 +141,7 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
       } else {
         toast.success(msg);
       }
-      window.location.reload();
+      router.refresh();
     } catch {
       toast.error("Error inesperado");
     } finally {
@@ -197,7 +199,7 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
       />
 
       <div className="rounded-lg border">
-        <Table>
+        <Table className="[&_td]:px-3 [&_th]:px-3">
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
@@ -283,9 +285,9 @@ export function ProvidersTable({ providers, usersMap = {} }: Props) {
                     <TableCell>
                       <CompletenessBadge value={scores[p.id]} />
                     </TableCell>
-                    <TableCell>{formatDate(p.updated_at)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(p.updated_at)}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex flex-col items-end gap-1.5 [&>button]:w-28">
                         <Button
                           variant="outline"
                           size="sm"

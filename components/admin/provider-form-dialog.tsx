@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export function ProviderFormDialog({ open, onOpenChange, provider }: Props) {
+  const router = useRouter();
   const isEdit = Boolean(provider?.id);
 
   const handleSubmit = async (values: ProviderFormValues) => {
@@ -51,7 +53,7 @@ export function ProviderFormDialog({ open, onOpenChange, provider }: Props) {
             {isEdit ? "Editar proveedor" : "Nuevo proveedor"}
           </DialogTitle>
           <DialogDescription>
-            Completá los datos del proveedor. El nombre es obligatorio.
+            Completa los datos del proveedor. El nombre es obligatorio.
           </DialogDescription>
         </DialogHeader>
 
@@ -63,7 +65,7 @@ export function ProviderFormDialog({ open, onOpenChange, provider }: Props) {
           onCancel={() => onOpenChange(false)}
           onSuccess={() => {
             onOpenChange(false);
-            window.location.reload();
+            router.refresh();
           }}
         />
       </DialogContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -50,6 +51,7 @@ const isPublished = (e: Evento) => e.aprobacion === "aprobado" && e.estado === "
 const isUnpublished = (e: Evento) => e.aprobacion === "aprobado" && e.estado !== "publicado";
 
 export function EventsTable({ events, usersMap = {} }: Props) {
+  const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [dialog, setDialog] = useState<{
@@ -137,7 +139,7 @@ export function EventsTable({ events, usersMap = {} }: Props) {
       } else {
         toast.success(msg);
       }
-      window.location.reload();
+      router.refresh();
     } catch {
       toast.error("Error inesperado");
     } finally {
@@ -196,7 +198,7 @@ export function EventsTable({ events, usersMap = {} }: Props) {
       />
 
       <div className="rounded-lg border">
-        <Table>
+        <Table className="[&_td]:px-3 [&_th]:px-3">
           <TableHeader>
             <TableRow>
               <TableHead>Título</TableHead>
@@ -239,7 +241,7 @@ export function EventsTable({ events, usersMap = {} }: Props) {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{formatDate(e.fecha_inicio)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(e.fecha_inicio)}</TableCell>
                     <TableCell>{e.zona || "-"}</TableCell>
                     <TableCell>
                       {creator ? (
@@ -280,7 +282,7 @@ export function EventsTable({ events, usersMap = {} }: Props) {
                       <CompletenessBadge value={scores[e.id]} />
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex flex-col items-end gap-1.5 [&>button]:w-28">
                         <Button
                           variant="outline"
                           size="sm"

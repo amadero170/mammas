@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export function EventFormDialog({ open, onOpenChange, event }: Props) {
+  const router = useRouter();
   const isEdit = Boolean(event?.id);
 
   const handleSubmit = async (values: EventFormValues) => {
@@ -53,7 +55,7 @@ export function EventFormDialog({ open, onOpenChange, event }: Props) {
             {isEdit ? "Editar evento" : "Nuevo evento"}
           </DialogTitle>
           <DialogDescription>
-            Completá los datos del evento. Los campos con * son obligatorios.
+            Completa los datos del evento. Los campos con * son obligatorios.
           </DialogDescription>
         </DialogHeader>
 
@@ -65,7 +67,7 @@ export function EventFormDialog({ open, onOpenChange, event }: Props) {
           onCancel={() => onOpenChange(false)}
           onSuccess={() => {
             onOpenChange(false);
-            window.location.reload();
+            router.refresh();
           }}
         />
       </DialogContent>
