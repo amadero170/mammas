@@ -263,6 +263,17 @@ function BuscarContent() {
                               <Facebook className="h-3.5 w-3.5" />
                             </a>
                           )}
+                          {p.google_maps_link && (
+                            <a
+                              href={ensureProtocol(p.google_maps_link)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={p.direccion || "Ver en mapa"}
+                              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#4c2f92] text-[#4c2f92] transition-colors hover:bg-[#4c2f92]/10"
+                            >
+                              <MapPin className="h-3.5 w-3.5" />
+                            </a>
+                          )}
                         </div>
                         <Link href={`/directorio?q=${encodeURIComponent(p.nombre)}`}>
                           <Button
